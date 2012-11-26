@@ -1,0 +1,18 @@
+
+Mini3d <www.mini3d.org>
+Mini3d is a minimalistic, cross platform, open source 3d game engine framework.
+
+INTRODUCTION
+Mini3d is a minimalistic C++ 3D Game Enigne Framework for programming enthusiasts that want to build cool and unique apps and games. All parts of mini3d are independent in terms of build dependencies and can easily be combined with each other and with external libraries. This makes it a great starting point for any project to expand from!
+
+SMALL, LIGHT WEIGHT, FAST
+Mini3d is deliberately made small and minimalistic. The whole system is only about 10000 lines of code. A full compile takes less than 5 seconds on a modern system. At the same time, everything you need to make something cool is included! :)
+
+CROSS PLATFORM
+Mini3d has been designed from the ground up as a cross platform library. The supported platforms out of the box are: Windows, OS X, Linux, iOS, Android.
+
+QUICK TO SET UP
+Dristribution is kept as lean and simple as possible. No libraries, only source code files. The source has no external dependencies beyond what is already included with your OS SDK. No build system or configuration is necessary. It is a drop-in solution for any supported platform!
+
+LICENSE
+Mini3d source code is distributed under the MIT Software License <www.mini3d.org/license>.
