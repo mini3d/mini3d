@@ -15,4 +15,4 @@ QUICK TO SET UP
 Dristribution is kept as lean and simple as possible. No libraries, only source code files. The source has no external dependencies beyond what is already included with your OS SDK. No build system or configuration is necessary. It is a drop-in solution for any supported platform!
 
 LICENSE
-Mini3d source code is distributed under the MIT Software License <www.mini3d.org/license>.
+Mini3d source code is distributed under the MIT Software License <www.mini3d.org/license>
