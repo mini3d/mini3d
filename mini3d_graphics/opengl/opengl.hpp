@@ -10,8 +10,7 @@
 #ifdef MINI3D_GRAPHICSSERVICE_OPENGL
 
 #include "platform/iplatform.hpp"
-#include "platform/iopenglwrapper.hpp"
-
+#include "platform/openglwrapper.hpp"
 #include <cstring>
 
 typedef unsigned int uint;
@@ -19,6 +18,9 @@ typedef unsigned int uint;
 ///////// NAMESPACE MINI3D ////////////////////////////////////////////////////
 
 namespace mini3d {
+namespace graphics {
+
+class OpenGlWrapper;
 
 ///////// FOREWARD DECLARATIONS ///////////////////////////////////////////////
 
@@ -114,7 +116,7 @@ typedef struct GraphicsService_OpenGL : IGraphicsService
 
 	void RestoreGraphicsState();
 	IPlatform* GetPlatform();
-    IOpenGlWrapper* GetOpenGlWrapper();
+    OpenGlWrapper* GetOpenGlWrapper();
 	void SetCullMode(CullMode cullMode, bool force);
 	void CreateDevice();
 	void CreateInternalWindow();
@@ -124,7 +126,7 @@ typedef struct GraphicsService_OpenGL : IGraphicsService
 
 	Resource* m_pResourceList;
 	IPlatform* m_pPlatform;
-    IOpenGlWrapper* m_pOgl;
+    OpenGlWrapper* m_pOgl;
 
 	IRenderTarget* m_pCurrentRenderTarget;
 	WindowRenderTarget_OpenGL* m_pCurrentWindowRenderTarget;
@@ -341,6 +343,7 @@ struct WindowRenderTarget_OpenGL : IWindowRenderTarget, Resource
 	GraphicsService_OpenGL* m_pGraphicsService;
 };
 
+}
 }
 
 #endif //MINI3D_GRAPHICSSERVICE_OPENGL

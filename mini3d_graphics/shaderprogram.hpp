@@ -7,8 +7,8 @@
 #ifndef MINI3D_ISHADERPROGRAM_H
 #define MINI3D_ISHADERPROGRAM_H
 
-namespace mini3d
-{
+namespace mini3d {
+namespace graphics {
 
 struct IPixelShader;
 struct IVertexShader;
@@ -28,6 +28,7 @@ public:
 	virtual ~IShaderProgram() {};
 
 };
+}
 }
 
 #endif

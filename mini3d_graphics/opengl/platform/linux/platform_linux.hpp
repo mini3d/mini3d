@@ -6,15 +6,12 @@
 #ifndef MINI3D_GRAPHICS_PLATFORM_LINUX_H
 #define MINI3D_GRAPHICS_PLATFORM_LINUX_H
 
-#if defined(__linux__) && !defined(ANDROID) && !defined(__APPLE__)
+#if defined(__linux__) && !defined(ANDROID)
 
 #include "../iplatform.hpp"
-#include "../iopenglwrapper.hpp"
 
-namespace mini3d
-{
-
-struct Internal;
+namespace mini3d {
+namespace graphics {
 	
 typedef class Platform_linux : public IPlatform
 {
@@ -26,17 +23,16 @@ public:
 
 private:
 	void CreateInternalWindow();
+	void CreateDeviceContext();
+	void DestroyDeviceContext();
 	void Init();
 
-    IOpenGlWrapper* mpOpenGlWrapper;
-
-	float mOpenGLVersion;
-	bool mVERSION_3_3;
-
-	Internal* mpInternal;
+	struct Internal;
+	Internal* mpI;
 
 } Platform;
 
+}
 }
 
 #endif

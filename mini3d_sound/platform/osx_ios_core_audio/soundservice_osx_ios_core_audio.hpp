@@ -8,6 +8,7 @@
 #ifndef MINI3D_SOUND_OSX_IOS_CORE_AUDIO_H
 #define MINI3D_SOUND_OSX_IOS_CORE_AUDIO_H
 
+#include "../../sound.hpp" // for Mutex and Lock
 #include "../isoundservice.hpp"
 #include <AudioToolbox/AudioQueue.h>
 

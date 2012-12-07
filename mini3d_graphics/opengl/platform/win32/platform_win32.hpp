@@ -9,7 +9,6 @@
 #define MINI3D_GRAPHICS_PLATFORM_WIN32_H
 
 #include "../iplatform.hpp"
-#include "../iopenglwrapper.hpp"
 
 #ifndef _WINGDI_
 struct tagPIXELFORMATDESCRIPTOR;
@@ -23,8 +22,8 @@ struct HDC__; typedef HDC__ *HDC; // "Forward declare" windows HWND
 #endif
 
 
-namespace mini3d
-{
+namespace mini3d {
+namespace graphics {
 
 typedef class Platform_win32 : public IPlatform
 {
@@ -35,12 +34,6 @@ public:
     ~Platform_win32();
 
 private:
-	void CreateInternalWindow();
-
-    IOpenGlWrapper* mpOpenGlWrapper;
-
-    float mOpenGLVersion;
-	bool mVERSION_3_3;
 
 	// Default window and render context
 	HWND mInternalWindow;
@@ -51,6 +44,7 @@ private:
 
 } Platform;
 
+}
 }
 
 #endif // MINI3D_GRAPHICS_PLATFORM_WIN32_H

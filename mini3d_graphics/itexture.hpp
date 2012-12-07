@@ -7,8 +7,9 @@
 #ifndef MINI3D_ITEXTURE_H
 #define MINI3D_ITEXTURE_H
 
-namespace mini3d
-{
+namespace mini3d {
+namespace graphics {
+
 class ITexture
 {
 public:
@@ -35,6 +36,7 @@ public:
 //	virtual Format GetFormat() const = 0;
 	virtual SamplerSettings GetSamplerSettings() const = 0;
 };
+}
 }
 
 #endif

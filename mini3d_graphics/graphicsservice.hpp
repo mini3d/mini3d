@@ -24,6 +24,7 @@ typedef void* MINI3D_WINDOW;
 
 
 namespace mini3d {
+namespace graphics {
 
 struct IRenderTargetTexture;
 struct IBitmapTexture;
@@ -81,6 +82,7 @@ public:
 	virtual ~IGraphicsService() {};
 
 };
+}
 }
 
 // Include platform specific inmplementations

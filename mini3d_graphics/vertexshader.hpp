@@ -6,8 +6,9 @@
 #ifndef MINI3D_IVERTEXSHADER_H
 #define MINI3D_IVERTEXSHADER_H
 
-namespace mini3d
-{
+namespace mini3d {
+namespace graphics {
+
 
 struct IVertexShader
 {
@@ -23,6 +24,7 @@ public:
 	~IVertexShader() {};
 
 };
+}
 }
 
 #endif

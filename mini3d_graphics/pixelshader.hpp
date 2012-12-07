@@ -7,8 +7,8 @@
 #ifndef MINI3D_IPIXELSHADER_H
 #define MINI3D_IPIXELSHADER_H
 
-namespace mini3d
-{
+namespace mini3d {
+namespace graphics {
 
 struct IPixelShader
 {
@@ -26,8 +26,7 @@ public:
 
 };
 }
-
-	
+}
 
 
 #endif

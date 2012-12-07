@@ -14,13 +14,13 @@
 #include <cstdlib>
 #include <cmath>
 
+using namespace mini3d::sound;
+
 ///////// THREADING ///////////////////////////////////////////////////////////
 
 #ifdef WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-
-using namespace mini3d::sound;
 
 Mutex::Mutex()                                      { m_hMutex = malloc(sizeof(CRITICAL_SECTION)); InitializeCriticalSection((CRITICAL_SECTION*)m_hMutex); }
 Mutex::~Mutex()                                     { DeleteCriticalSection((CRITICAL_SECTION*)m_hMutex); free(m_hMutex); }

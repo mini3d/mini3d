@@ -5,7 +5,7 @@
 
 #if defined(__linux) && !defined(ANDROID) && !defined(__APPLE__)
 
-#include "soundservice_linux_alsa.h"
+#include "soundservice_linux_alsa.hpp"
 #include <unistd.h>
 
 void mini3d_assert(bool expression, const char* text, ...);

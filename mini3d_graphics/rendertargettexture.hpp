@@ -10,8 +10,8 @@
 #include "itexture.hpp"
 #include "irendertarget.hpp"
 
-namespace mini3d
-{
+namespace mini3d {
+namespace graphics {
 
 struct IRenderTargetTexture : public IRenderTarget, public ITexture
 {
@@ -42,6 +42,7 @@ public:
 	virtual ~IRenderTargetTexture() {};
 
 };
+}
 }
 
 #endif

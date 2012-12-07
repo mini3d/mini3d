@@ -36,6 +36,7 @@ struct HWND__; typedef HWND__ *HWND; // "Forward declare" windows HWND
 ///////// NAMESPACE MINI3D ////////////////////////////////////////////////////
 
 namespace mini3d {
+namespace graphics {
 
 ///////// FOREWARD DECLARATIONS ///////////////////////////////////////////////
 
@@ -384,6 +385,7 @@ public:
 };
 
 }   // namespace mini3d
+}
 
 #endif // MINI3D_GRAPHICS_DIRECT3D9_H
 #endif // MINI3D_GRAPHICSSERVICE_DIRECTX_9

@@ -18,6 +18,12 @@ void        Timer::Sleep(uint64_t microSeconds)     { ::Sleep(DWORD(microSeconds
 #include <unistd.h>
 uint64_t    TimeGetTimeInMicroSeconds()             { timeval t; gettimeofday(&t, NULL); return t.tv_sec * 1000000 + t.tv_usec; }
 void        Timer::Sleep(uint64_t microSeconds)     {usleep(microSeconds); }
+#elif __APPLE__
+#include <sys/time.h>
+#include <unistd.h>
+// TODO: Maby not the best way to do it. (Use NSDate and timeIntervalSinceNow?)
+uint64_t    TimeGetTimeInMicroSeconds()             { timeval t; gettimeofday(&t, NULL); return t.tv_sec * 1000000 + t.tv_usec; }
+void        Timer::Sleep(uint64_t microSeconds)     {usleep((useconds_t)microSeconds); }
 #endif
 
 
@@ -47,6 +53,7 @@ void Timer::Start()
 			mPauseTime = TimeGetTimeInMicroSeconds() - mPauseTime;
 			mState = RUNNING;
 			break;
+        default:;
 	}
 }
 

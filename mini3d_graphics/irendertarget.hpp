@@ -8,8 +8,9 @@
 #define MINI3D_IRENDERTARGET_H
 
 
-namespace mini3d
-{
+namespace mini3d {
+namespace graphics {
+
 class IRenderTarget
 {
 public:
@@ -34,6 +35,7 @@ public:
 	virtual void SetDepthTestEnabled(bool isDepthTestEnabled) = 0;
 
 };
+}
 }
 
 #endif

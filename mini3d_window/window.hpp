@@ -6,7 +6,7 @@
 #ifndef MINI3D_WINDOW_WINDOW_H
 #define MINI3D_WINDOW_WINDOW_H
 
-#include "events.h"
+#include "event.hpp"
 
 namespace mini3d {
 namespace window {
@@ -45,5 +45,6 @@ public:
 
 #include "platform/win32/window_win32.hpp"
 #include "platform/linux/window_linux.hpp"
+#include "platform/osx/window_osx.hpp"
 
 #endif

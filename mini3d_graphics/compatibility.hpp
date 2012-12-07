@@ -11,6 +11,7 @@
 #include "rendertargettexture.hpp"
 
 namespace mini3d {
+namespace graphics {
 
 struct ICompatibility
 {
@@ -37,5 +38,6 @@ public:
 
 };
 } // namespace mini3d
+}
 
 #endif

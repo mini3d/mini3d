@@ -9,7 +9,8 @@
 #ifndef MINI3D_WINDOW_WINDOW_WIN32_H
 #define MINI3D_WINDOW_WINDOW_WIN32_H
 
-#include "../../window.h"
+#include "../../window.hpp"
+#include "../common/eventqueue.h"
 
 #ifndef _WINDEF_
 struct HGLRC__; typedef HGLRC__ *HGLRC; // "Forward declare" windows HWND
@@ -27,23 +28,22 @@ public:
     Window_win32(const char* title, unsigned int width, unsigned int height, WindowType windowType, unsigned int multisamples = 0);
     ~Window_win32();
 
-public:
-	HWND CreateWindowsWindow(Window_win32* pWindow, const char* title, unsigned int width, unsigned int height, unsigned int &multisamples);
-	void ReleaseMinimalisticOpenGLRenderContext();
-	void CreateMinimalisticOpenGLRenderContext();
+    static bool processEvents();
+    EventQueue mEventQueue;
+
+private:
 
     HGLRC mRenderContext;
 	HWND mInternalWindow;
 	HGLRC mOldHglrc;
 	HDC mOldHdc;
+    wchar_t mWindowClassName[32];
+	wchar_t mTitle[1024];
 
 	ScreenState mScreenState;
 	unsigned int mMultisamples;
 	WindowType mWindowType;
 	HWND hWindow;
-
-    // Set by window-callback to point to the latest message
-    const Event* mpInternalEvent;
 
 } Window;
 

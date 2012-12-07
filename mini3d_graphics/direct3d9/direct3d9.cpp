@@ -24,10 +24,26 @@ void mini3d_assert(bool expression, const char* text, ...);
 
 ////////// INTERNAL HELPER FUNCTIONS //////////////////////////////////////////
 
-namespace mini3d
-{
+using namespace mini3d::graphics;
 
 namespace {
+
+    LRESULT CALLBACK InternalWindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+    {
+	    switch(msg)
+	    {
+		    case WM_DISPLAYCHANGE:
+
+			    GraphicsService_Direct3d9* pGraphicsService = (GraphicsService_Direct3d9*)GetProp(hWnd, L".mini3d_graphicsservice");
+			    // if we did not find a matching window proc, call default window proc and return result (window is not an internal graphicsservice window)
+			    if (pGraphicsService == 0) return DefWindowProc(hWnd, msg, wParam, lParam);
+
+			    pGraphicsService->RecreateDevice();
+			    break;
+	    }
+	    return DefWindowProc(hWnd, msg, wParam, lParam);
+    }
+
 
 	// A map matching window handles to the correct window render target object
 	struct WindowInfo { WindowRenderTarget_Direct3d9* windowRenderTarget; WNDPROC pOrigProc; };
@@ -178,7 +194,6 @@ namespace {
 		return d3dpp;
 	}
 }
-
 
 ///////// INDEX BUFFER ////////////////////////////////////////////////////////
 
@@ -1186,22 +1201,6 @@ GraphicsService_Direct3d9::GraphicsService_Direct3d9()
 	SetCullMode(CULL_COUNTERCLOCKWIZE); // TODO: Move somewhere proper!
 }
 
-LRESULT CALLBACK InternalWindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-	switch(msg)
-	{
-		case WM_DISPLAYCHANGE:
-
-			GraphicsService_Direct3d9* pGraphicsService = (GraphicsService_Direct3d9*)GetProp(hWnd, L".mini3d_graphicsservice");
-			// if we did not find a matching window proc, call default window proc and return result (window is not an internal graphicsservice window)
-			if (pGraphicsService == 0) return DefWindowProc(hWnd, msg, wParam, lParam);
-
-			pGraphicsService->RecreateDevice();
-			break;
-	}
-	return DefWindowProc(hWnd, msg, wParam, lParam);
-}
-
 void GraphicsService_Direct3d9::CreateInternalWindow()
 {
 	if (m_Window != 0) DisposeInternalWindow();
@@ -1927,7 +1926,6 @@ void GraphicsService_Direct3d9::Clear(float r, float g, float b, float a, float 
 	m_pDevice->Clear(0, 0, flags, color, depth, 0);
 }
 
-}
 
 #endif //MINI3D_GRAPHICSSERVICE_DIRECTX_9
 #endif

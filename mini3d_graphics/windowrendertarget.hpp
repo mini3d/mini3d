@@ -10,8 +10,9 @@
 // Set the data type for the MINI3D_WINDOW macro
 #include "irendertarget.hpp"
 
-namespace mini3d
-{
+namespace mini3d {
+namespace graphics {
+
 		
 struct IWindowRenderTarget : IRenderTarget
 {
@@ -42,6 +43,6 @@ public:
 
 };
 }
-
+}
 
 #endif

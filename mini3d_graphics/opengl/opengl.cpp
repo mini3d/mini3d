@@ -16,10 +16,11 @@
 #include "../common/mipmap.hpp"
 
 #include "platform/iplatform.hpp"
+#include "platform/openglwrapper.hpp"
 
 void mini3d_assert(bool expression, const char* text, ...);
 
-using namespace mini3d;
+using namespace mini3d::graphics;
 
 typedef unsigned int uint;
 
@@ -30,21 +31,21 @@ namespace {
 	
 	char logText[LOG_TEXT_MAX_LENGTH];
 
-    void PrintShaderLog(GLuint obj, IOpenGlWrapper* pWrapper)
+    void PrintShaderLog(GLuint obj, OpenGlWrapper* pWrapper)
 	{
         *logText = 0;
 		pWrapper->glGetShaderInfoLog(obj, LOG_TEXT_MAX_LENGTH, 0, logText);
 		if (*logText) printf("SHADER COMPILATION LOG:\n%s\n", logText);
 	}
 
-	void PrintProgramLog(GLuint obj, IOpenGlWrapper* pWrapper)
+	void PrintProgramLog(GLuint obj, OpenGlWrapper* pWrapper)
 	{
         *logText = 0;
 		pWrapper->glGetProgramInfoLog(obj, LOG_TEXT_MAX_LENGTH, 0, logText);
 		if (*logText) printf("PROGRAM LINKING LOG:\n%s\n", logText);
 	}
 
-	void PrintAttributeInformation(GLuint obj, IOpenGlWrapper* pWrapper)
+	void PrintAttributeInformation(GLuint obj, OpenGlWrapper* pWrapper)
 	{
         printf("\nATTRIBUTE INFORMATION: \n");
 		GLint count, maxNameLength, size;
@@ -80,10 +81,10 @@ namespace {
 unsigned int mini3d_IndexBuffer_OpenGL_BytesPerIndex[] = { 2, 4 };
 
 unsigned int					IndexBuffer_OpenGL::GetIndexCount() const					{ return m_IndexCount; };
-IIndexBuffer::DataType			IndexBuffer_OpenGL::GetDataType() const						{ return m_DataType; };
+IIndexBuffer::DataType			IndexBuffer_OpenGL::GetDataType() const					    { return m_DataType; };
 void*							IndexBuffer_OpenGL::GetIndices(uint& sizeInBytes)			{ return CopyOut(sizeInBytes); }
 void*							IndexBuffer_OpenGL::Lock(uint& sizeInBytes, bool readOnly)	{ return Lock(sizeInBytes, readOnly); }
-void							IndexBuffer_OpenGL::Unlock()								{ if (LockableResource::Unlock()) LoadResource(); }
+void							IndexBuffer_OpenGL::Unlock()								{ if (LockableResource<char>::Unlock()) LoadResource(); }
 								IndexBuffer_OpenGL::~IndexBuffer_OpenGL()					{ UnloadResource(); m_pGraphicsService->RemoveResource(this); }
 
 IndexBuffer_OpenGL::IndexBuffer_OpenGL(GraphicsService_OpenGL* pGraphicsService, const void* pIndices, unsigned int count, DataType dataType)
@@ -112,7 +113,7 @@ void IndexBuffer_OpenGL::LoadResource(void)
 	// If the buffer exists but is not the correct size, tear it down and recreate it
 	if (m_IndexBuffer != 0 && m_BufferSizeInBytes != m_SizeInBytes) UnloadResource();
 
-    IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+    OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 
 	// If it does not exist, create a new one
 	if (m_IndexBuffer == 0)
@@ -145,7 +146,7 @@ void IndexBuffer_OpenGL::UnloadResource(void)
 	{
 		// if this is the currently loaded index buffer, release it
 		if (m_pGraphicsService->GetIndexBuffer() == this) m_pGraphicsService->SetIndexBuffer(0);
-	    IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+	    OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 		pOgl->glDeleteBuffers(1, &m_IndexBuffer); 
 		m_IndexBuffer = 0;
 	}
@@ -155,7 +156,7 @@ void IndexBuffer_OpenGL::UnloadResource(void)
 
 void IndexBuffer_OpenGL::ExtractResourceFromOpenGL()
 {
-    IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+    OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 	
 	m_pResource = new char[m_SizeInBytes];
 	pOgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_IndexBuffer);
@@ -166,14 +167,14 @@ void IndexBuffer_OpenGL::ExtractResourceFromOpenGL()
 
 ///////// VERTEX BUFFER ///////////////////////////////////////////////////////
 
-uint						VertexBuffer_OpenGL::GetVertexCount() const						{ return m_SizeInBytes / m_VertexSizeInBytes; };
+uint						VertexBuffer_OpenGL::GetVertexCount() const					{ return m_SizeInBytes / m_VertexSizeInBytes; };
 uint						VertexBuffer_OpenGL::GetVertexSizeInBytes() const				{ return m_VertexSizeInBytes; };
 IVertexBuffer::StreamMode	VertexBuffer_OpenGL::GetStreamMode() const						{ return m_StreamMode; };
 void						VertexBuffer_OpenGL::SetStreamMode(StreamMode streamMode)		{ m_StreamMode = streamMode; };
-void*						VertexBuffer_OpenGL::GetVertices(uint& sizeInBytes)				{ return CopyOut(sizeInBytes); }
-void*						VertexBuffer_OpenGL::Lock(uint& sizeInBytes, bool readOnly)		{ return Lock(sizeInBytes, readOnly); }
-void						VertexBuffer_OpenGL::Unlock()									{ if (LockableResource::Unlock()) LoadResource(); }
-							VertexBuffer_OpenGL::~VertexBuffer_OpenGL()						{ UnloadResource(); m_pGraphicsService->RemoveResource(this); }
+void*						VertexBuffer_OpenGL::GetVertices(uint& sizeInBytes)			{ return CopyOut(sizeInBytes); }
+void*						VertexBuffer_OpenGL::Lock(uint& sizeInBytes, bool readOnly)	{ return Lock(sizeInBytes, readOnly); }
+void						VertexBuffer_OpenGL::Unlock()									{ if (LockableResource<char>::Unlock()) LoadResource(); }
+							VertexBuffer_OpenGL::~VertexBuffer_OpenGL()					{ UnloadResource(); m_pGraphicsService->RemoveResource(this); }
 
 VertexBuffer_OpenGL::VertexBuffer_OpenGL(GraphicsService_OpenGL* pGraphicsService, const void* pVertices, unsigned int count, unsigned int vertexSizeInBytes, IVertexBuffer::StreamMode streamMode)
 {
@@ -226,7 +227,7 @@ void VertexBuffer_OpenGL::LoadResource(void)
 		UnloadResource();
 	}
 
-    IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+    OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 
 	// If it does not exist, create a new one
 	if (m_VertexBuffer == 0)
@@ -261,7 +262,7 @@ void VertexBuffer_OpenGL::UnloadResource(void)
 		if (m_pGraphicsService->GetVertexBuffer(0) == this)
 			m_pGraphicsService->SetVertexBuffer(0, 0);
 
-        IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+        OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 		pOgl->glDeleteBuffers(1, &m_VertexBuffer); 
 		m_VertexBuffer = 0;
 	}
@@ -271,7 +272,7 @@ void VertexBuffer_OpenGL::UnloadResource(void)
 
 void VertexBuffer_OpenGL::ExtractResourceFromOpenGL()
 {
-    IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+    OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 	
 	m_pResource = new char[m_SizeInBytes];
 	pOgl->glBindBuffer(GL_ARRAY_BUFFER, m_VertexBuffer);
@@ -298,7 +299,7 @@ void PixelShader_OpenGL::LoadResource()
 {
 	if (m_ShaderBuffer != 0) { UnloadResource(); }
 	
-    IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+    OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 
 	m_ShaderBuffer = pOgl->glCreateShader(GL_FRAGMENT_SHADER);
 	pOgl->glShaderSource(m_ShaderBuffer, 1, (const GLchar**)&m_pResource, (GLint*)&m_SizeInBytes);
@@ -325,7 +326,7 @@ void PixelShader_OpenGL::UnloadResource(void)
 
 void PixelShader_OpenGL::ExtractResourceFromOpenGL()
 {
-    IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+    OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 	
 	m_pResource = new char[m_SizeInBytes + 1];
 	pOgl->glGetShaderSource(m_ShaderBuffer, m_SizeInBytes + 1, 0, m_pResource);
@@ -350,7 +351,7 @@ void VertexShader_OpenGL::LoadResource()
 {
 	if (m_ShaderBuffer != 0) { UnloadResource(); }
 	
-    IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+    OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 
 	m_ShaderBuffer = pOgl->glCreateShader(GL_VERTEX_SHADER);
 	pOgl->glShaderSource(m_ShaderBuffer, 1, (const GLchar**)&m_pResource, (GLint*)&m_SizeInBytes);
@@ -377,7 +378,7 @@ void VertexShader_OpenGL::UnloadResource(void)
 
 void VertexShader_OpenGL::ExtractResourceFromOpenGL()
 {
-    IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+    OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 	
 	m_pResource = new char[m_SizeInBytes + 1];
 	pOgl->glGetShaderSource(m_ShaderBuffer, m_SizeInBytes + 1, 0, m_pResource);
@@ -405,7 +406,7 @@ void ShaderProgram_OpenGL::LoadResource()
 {
 	if (m_Program != 0) { UnloadResource(); }
 
-    IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+    OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 
 	m_Program = pOgl->glCreateProgram();
 
@@ -435,7 +436,7 @@ void ShaderProgram_OpenGL::UnloadResource()
 		if (m_pGraphicsService->GetShaderProgram() == this)
 			m_pGraphicsService->SetShaderProgram(0);
 
-        IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+        OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 		pOgl->glDeleteProgram(m_Program);
 
 		m_Program  = 0;
@@ -460,7 +461,7 @@ void						BitmapTexture_OpenGL::SetMipMapMode(MipMapMode mipMapMode)		{ m_mipMap
 ITexture::SamplerSettings	BitmapTexture_OpenGL::GetSamplerSettings() const				{ return m_SamplerSettings; };
 void*						BitmapTexture_OpenGL::GetBitmap(uint& sizeInBytes)				{ return CopyOut(sizeInBytes); }
 void*						BitmapTexture_OpenGL::Lock(uint& sizeInBytes, bool readOnly)	{ return Lock(sizeInBytes, readOnly); }
-void						BitmapTexture_OpenGL::Unlock()									{ if (LockableResource::Unlock()) LoadResource(); }
+void						BitmapTexture_OpenGL::Unlock()									{ if (LockableResource<char>::Unlock()) LoadResource(); }
 							BitmapTexture_OpenGL::~BitmapTexture_OpenGL()					{ UnloadResource(); m_pGraphicsService->RemoveResource(this); }
 
 BitmapTexture_OpenGL::BitmapTexture_OpenGL(GraphicsService_OpenGL* pGraphicsService, const void* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, MipMapMode mipMapMode) 
@@ -495,7 +496,7 @@ void BitmapTexture_OpenGL::UpdateTextureSettings()
 {
 	if (m_Texture == 0) return;
 
-    IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+    OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 
 	pOgl->glBindTexture(GL_TEXTURE_2D, m_Texture);
 
@@ -537,7 +538,7 @@ void BitmapTexture_OpenGL::LoadResource()
 {
 	if ((m_Texture != 0) && (m_BufferSize.width != m_Size.width || m_BufferSize.height != m_Size.height)) UnloadResource();
 
-    IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+    OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 
 	// If it does not exist, create a new one
 	if (m_Texture == 0)
@@ -642,7 +643,7 @@ void BitmapTexture_OpenGL::UnloadResource()
 {
 	if (m_Texture != 0)
 	{
-        IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+        OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 
 		ExtractResourceFromOpenGL();
 
@@ -666,7 +667,7 @@ void BitmapTexture_OpenGL::UnloadResource()
 
 void BitmapTexture_OpenGL::ExtractResourceFromOpenGL()
 {
-    IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+    OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 
 	m_pResource = new char[m_Size.width * m_Size.height * mini3d_BitmapTexture_BytesPerPixel[m_Format]];
 	pOgl->glBindTexture(GL_TEXTURE_2D, m_Texture);
@@ -729,7 +730,7 @@ void RenderTargetTexture_OpenGL::LoadResource()
 	// and one for depth-only frame buffer objects. Read the OpenGL wiki below to see how this works.
 	// http://www.opengl.org/wiki/GL_EXT_framebuffer_object#Color_texture.2C_Depth_texture
 
-    IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+    OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 
 	// if it is not unloaded, do so now
 	UnloadResource();
@@ -792,7 +793,7 @@ void RenderTargetTexture_OpenGL::UnloadResource()
 			}
 		}
 
-        IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+        OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 		pOgl->glDeleteRenderbuffers(1, &m_pDepthStencil);
 		m_pDepthStencil = 0;
 
@@ -810,7 +811,7 @@ void RenderTargetTexture_OpenGL::UpdateTextureSettings()
 {
 	if (m_pTexture == 0)	return;
 
-    IOpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
+    OpenGlWrapper* pOgl = m_pGraphicsService->GetOpenGlWrapper();
 
 	pOgl->glBindTexture(GL_TEXTURE_2D, m_pTexture);
 	
@@ -859,7 +860,7 @@ void							WindowRenderTarget_OpenGL::SetViewport(Viewport viewport)				{ };
 bool							WindowRenderTarget_OpenGL::GetDepthTestEnabled() const					{ return m_DepthTestEnabled; };
 void							WindowRenderTarget_OpenGL::SetDepthTestEnabled(bool depthTestEnabled)	{ m_DepthTestEnabled = depthTestEnabled; LoadResource();};
 MINI3D_WINDOW					WindowRenderTarget_OpenGL::GetWindowHandle() const						{ return m_Window; }
-void							WindowRenderTarget_OpenGL::Display()									{ m_pGraphicsService->GetPlatform()->SwapWindowBuffers(m_Window); }
+void							WindowRenderTarget_OpenGL::Display()									{ m_pGraphicsService->GetPlatform()->SwapWindowBuffers(this); }
 
 WindowRenderTarget_OpenGL::WindowRenderTarget_OpenGL(GraphicsService_OpenGL* pGraphicsService, MINI3D_WINDOW window, bool depthTestEnabled)
 {
@@ -877,23 +878,11 @@ WindowRenderTarget_OpenGL::~WindowRenderTarget_OpenGL()
 { 
 	UnloadResource(); 
 	m_pGraphicsService->RemoveResource(this);
-
-	IPlatform* pPlatform = m_pGraphicsService->GetPlatform();
-	if (m_Window) pPlatform->FreeMini3dWindowToWindowRenderTargetAssociation(m_Window);
 }
 
 void WindowRenderTarget_OpenGL::SetWindowRenderTarget(MINI3D_WINDOW window, bool depthTestEnabled)
 {
 	IPlatform* pPlatform = m_pGraphicsService->GetPlatform();
-
-	if (window != m_Window)
-	{
-		if (m_Window)	pPlatform->FreeMini3dWindowToWindowRenderTargetAssociation(m_Window);
-		pPlatform->SetMini3dWindowToWindowRenderTargetAssociation((IWindowRenderTarget*)this, window);
-	}
-
-	// Get the size of the client area of the window 
-	//pPlatform->GetWindowContentSize(window, size.width, size.height);
 
 	// set the variables from the call
 	m_Window = window;
@@ -908,16 +897,17 @@ void WindowRenderTarget_OpenGL::LoadResource()
 {
 	// In MS windows, update the pixel format of the internal window if needed
 	// as all windows for the rendercontext must have the same pixelformat
-	IPlatform* pPlatform = m_pGraphicsService->GetPlatform();
+    /*
+    IPlatform* pPlatform = m_pGraphicsService->GetPlatform();
 	if (pPlatform->SetInternalWindowPixelFormat(m_Window))
 	{
-		// If the internal pixel format was changed, we need to 
+		// If the internal pixel format was changed, we need to recreate the device context and reload all resources
 		m_pGraphicsService->UnloadResources();
 		pPlatform->RecreateDeviceContext();
 		m_pGraphicsService->UpdateResources();
 		m_pGraphicsService->RestoreGraphicsState();
 	}
-
+    */
 	isDirty = false;
 }
 
@@ -966,7 +956,7 @@ Compatibility_OpenGL::Compatibility_OpenGL(GraphicsService_OpenGL* pGraphicsServ
 {
 	m_pGraphicsService = pGraphicsService;
 
-    IOpenGlWrapper* pOgl = pGraphicsService->GetOpenGlWrapper();
+    OpenGlWrapper* pOgl = pGraphicsService->GetOpenGlWrapper();
 
 	GLint unit;
 	pOgl->glGetIntegerv(GL_MAX_TEXTURE_SIZE, &unit);
@@ -985,7 +975,7 @@ void							GraphicsService_OpenGL::SetCullMode(CullMode cullMode)	{ SetCullMode(
 IRenderTarget*					GraphicsService_OpenGL::GetRenderTarget() const			{ return m_pCurrentRenderTarget == 0 ? m_pCurrentWindowRenderTarget : m_pCurrentRenderTarget; }
 const ICompatibility*			GraphicsService_OpenGL::GetCompatibility() const		{ return m_pCompatibility; }
 inline IPlatform*	            GraphicsService_OpenGL::GetPlatform()		            { return m_pPlatform; };
-inline IOpenGlWrapper*	        GraphicsService_OpenGL::GetOpenGlWrapper()		        { return m_pOgl; };
+inline OpenGlWrapper*	        GraphicsService_OpenGL::GetOpenGlWrapper()		        { return m_pOgl; };
 								GraphicsService_OpenGL::~GraphicsService_OpenGL()		{ delete m_pPlatform; }
 
 // Resource Creation (Just a simple pass-through of the arguments to the resource constructors)
@@ -1007,8 +997,7 @@ GraphicsService_OpenGL::GraphicsService_OpenGL()
 	m_CullMode = CULL_COUNTERCLOCKWIZE;
 
 	m_pPlatform = new Platform();
-    m_pOgl = m_pPlatform->GetOpenGlWrapper();
-
+    m_pOgl = new OpenGlWrapper();
 	m_pCompatibility = new Compatibility_OpenGL(this);
 
 	for (unsigned int i = 0; i < MAX_VERTEX_BUFFER_SLOTS; ++i)
@@ -1184,12 +1173,12 @@ void GraphicsService_OpenGL::SetRenderTarget(IRenderTarget* pRenderTarget)
 			m_pCurrentRenderTarget = NULL;
 		}
 
-		m_pPlatform->SetDefaultRenderWindow();
+        m_pPlatform->SetRenderWindow(0);
 		m_pCurrentWindowRenderTarget = 0;
 		return;
 	}
 
-	// This is a dynamic cast used as a typecheck, code police says this should be solved with virtual function calls instead
+	// This is a dynamic cast used as a type check, code police says this should be solved with virtual function calls instead
 	RenderTargetTexture_OpenGL* pRenderTargetTexture = dynamic_cast<RenderTargetTexture_OpenGL*>(pRenderTarget);
 
 	if (pRenderTargetTexture != 0)
@@ -1211,7 +1200,7 @@ void GraphicsService_OpenGL::SetRenderTarget(IRenderTarget* pRenderTarget)
 		return;
 	}
 
-	// This is a dynamic cast used as a typecheck, code police says this should be solved with virtual function calls instead
+	// This is a dynamic cast used as a type check, code police says this should be solved with virtual function calls instead
 	WindowRenderTarget_OpenGL* pWindowRenderTarget = dynamic_cast<WindowRenderTarget_OpenGL*>(pRenderTarget);
 
 	if (pWindowRenderTarget != 0)
@@ -1237,7 +1226,7 @@ void GraphicsService_OpenGL::SetRenderTarget(IRenderTarget* pRenderTarget)
 		if (m_pCurrentWindowRenderTarget == pWindowRenderTarget)
 			return;
 		
-		m_pPlatform->SetRenderWindow(pWindowRenderTarget->GetWindowHandle());
+		m_pPlatform->SetRenderWindow(pWindowRenderTarget);
 
 		// Because render target textures overrides window render targets we need to store this one also.
 		m_pCurrentWindowRenderTarget = pWindowRenderTarget;
@@ -1389,7 +1378,9 @@ void GraphicsService_OpenGL::UpdateVertexAttributes()
 			m_pOgl->glEnableVertexAttribArray(index);
 
 			// Set geometry instancing if requested and supported
-			if (m_pPlatform->VERSION_3_3())
+			// TODO: Move somewhere other than platform!
+			//if (m_pPlatform->VERSION_3_3())
+            if (false)
 			{
 				unsigned int divisor = 0;
 				switch(m_CurrentVertexBufferMap[streamIndex]->GetStreamMode()) {
@@ -1462,7 +1453,7 @@ void GraphicsService_OpenGL::Draw()
 	UpdateVertexAttributes();
 
 	// Draw the scene
-	if (m_IsUsingInstancedAttributes && m_pPlatform->VERSION_3_3())
+	if (m_IsUsingInstancedAttributes) // && m_pPlatform->VERSION_3_3()) TODO: Move somewhere other than platform
 	{
 		// Draw using instancing
 		m_pOgl->glDrawElementsInstanced(GL_TRIANGLES, m_pCurrentIndexBuffer->GetIndexCount(), GL_UNSIGNED_INT, 0, m_InstanceCount);

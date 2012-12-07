@@ -7,8 +7,9 @@
 #ifndef MINI3D_IVERTEXBUFFER_H
 #define MINI3D_IVERTEXBUFFER_H
 
-namespace mini3d
-{
+namespace mini3d {
+namespace graphics {
+
 
 struct IVertexBuffer
 {
@@ -57,6 +58,7 @@ public:
 	IVERTEXBUFFER_INTERFACE(=0);
 	virtual ~IVertexBuffer() {};
 };
+}
 }
 
 #endif

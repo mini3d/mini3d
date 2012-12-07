@@ -9,8 +9,8 @@
 
 #include "itexture.hpp"
 
-namespace mini3d
-{
+namespace mini3d {
+namespace graphics {
 
 struct IBitmapTexture : public virtual ITexture
 {
@@ -42,6 +42,6 @@ public:
 
 };
 }
-
+}
 
 #endif

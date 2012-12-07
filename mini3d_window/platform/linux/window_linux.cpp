@@ -3,9 +3,9 @@
 // This file is part of Mini3D <www.mini3d.org>
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
-#if defined(__linux__) && !defined(ANDROID) && !defined(__APPLE__)
+#if defined(__linux__) && !defined(ANDROID)
 
-#include "../../window.h"
+#include "window_linux.hpp"
 #include "X11/Xlib.h"
 #include <GL/gl.h>
 #include <GL/glx.h>
@@ -16,9 +16,10 @@
 
 #include "keysym2ucs.inl"
 
-namespace mini3d {
-namespace window {
-struct Internal
+
+using namespace mini3d::window;
+
+struct Window_linux::Internal
 {
 	::Window mWindow;
 	Display* mpDisplay;
@@ -26,17 +27,11 @@ struct Internal
 	GLXContext mRenderContext;
 	GLXContext mOldHglrc;
 
-	XEvent mFullscreenXEvent;
-	
+	XEvent mFullscreenXEvent;	
 };
-}
-}
 
-using namespace mini3d::window;
 
-const Event* HandleEvent(Display* pDisplay, XEvent &e);
-
-unsigned int GetMonitorFormat();
+bool HandleEvent(Display* pDisplay, XEvent &e, Event &ev);
 
 Window_linux::ScreenState 			Window_linux::GetScreenState() const	    { return mScreenState; };
 int 							    Window_linux::GetMultisamples() const 		{ return mMultisamples; };
@@ -53,12 +48,9 @@ Window_linux::Window_linux(const char* title, unsigned int width, unsigned int h
 	mMultisamples = multisamples;
 	mScreenState = SCREEN_STATE_WINDOWED;
 	
-	mpI->mpDisplay = XOpenDisplay(0);
+	mpI->mpDisplay = XOpenDisplay(NULL);
 		
-	int s = DefaultScreen(mpI->mpDisplay);
-	int blackColor = BlackPixel(mpI->mpDisplay, s);
-    int whiteColor = WhitePixel(mpI->mpDisplay, s);
-	mpI->mWindow = XCreateSimpleWindow(mpI->mpDisplay, RootWindow(mpI->mpDisplay, s), 0, 0, width, height, 0, blackColor, whiteColor);
+	mpI->mWindow = XCreateWindow(mpI->mpDisplay, DefaultRootWindow(mpI->mpDisplay), 0, 0, width, height, 0, CopyFromParent, InputOutput, CopyFromParent, 0, 0);
 	XStoreName(mpI->mpDisplay, mpI->mWindow, title);
 	XSelectInput(mpI->mpDisplay, mpI->mWindow, ExposureMask | StructureNotifyMask | FocusChangeMask | VisibilityChangeMask | KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
 	XFlush(mpI->mpDisplay);
@@ -119,166 +111,121 @@ void Window_linux::GetWindowContentSize(unsigned int &width, unsigned int &heigh
 	height = attr.height;
 }
 
-unsigned int GetMonitorFormat()
-{
-	Display* display = XOpenDisplay(0);
-	
-	// Set the video resolution to the fullscreen resolution
-	Visual* defaultVisual;
-	defaultVisual = XDefaultVisual(display, XDefaultScreen(display));
-	
-	return defaultVisual->bits_per_rgb;
-}
-
 
 ////////// WINDOW EVENTS //////////////////////////////////////////////////////
 
 const Event* Window_linux::WaitForNextMessage()
 {
-	const Event* pEvent = 0;
+	static Event ev;
 	XEvent e;
-	
-	for(;;)
-	{
-		if (XWindowEvent(mpI->mpDisplay, mpI->mWindow, ~0, &e))
-			return 0;
-		if (pEvent = HandleEvent(mpI->mpDisplay, e))
-			return pEvent;
-	}
+
+    for(;;)
+    {
+		while(!XWindowEvent(mpI->mpDisplay, mpI->mWindow, ~0, &e));
+		if(HandleEvent(mpI->mpDisplay, e, ev))
+			return &ev;
+    } 
 }
 
 const Event* Window_linux::GetNextMessage()
 {
-	const Event* pEvent = 0;
 	XEvent e;
-	
-	for(;;)
+	while(XCheckWindowEvent(mpI->mpDisplay, mpI->mWindow, ~0, &e))
 	{
-		if (XCheckWindowEvent(mpI->mpDisplay, mpI->mWindow, ~0, &e) == false)
-			return 0;
-		if (pEvent = HandleEvent(mpI->mpDisplay, e))
-			return pEvent;
+		static Event ev;
+		if (HandleEvent(mpI->mpDisplay, e, ev))
+			return &ev;
 	}
+
+    return 0;
 }
 
-const Event* HandleEvent(Display* pDisplay, XEvent &e)
+bool HandleEvent(Display* pDisplay, XEvent &e, Event &ev)
 {
 	Atom wmDeleteMessage = XInternAtom(pDisplay, "WM_DELETE_WINDOW", False);
 	
-	static KeyboardEvent keyboardEvent;
-	static WindowEvent windowEvent;
-	static MouseEvent mouseEvent;
-	
+	Event zero = {}; ev = zero;
 	
 	switch (e.type)
 	{
 		case Expose:
 			if (e.xexpose.count == 0)
-			{
-				WindowEvent ev;
-				ev.windowEventType = WindowEvent::PAINT;
-				return &(windowEvent = ev);
-			}
-		break;
+				ev.type = Event::REFRESH;
+			return true;
 		case ClientMessage:
 			if (e.xclient.data.l[0] == wmDeleteMessage)
-			{
-				WindowEvent ev;
-				ev.windowEventType = WindowEvent::CLOSED;
-				return &(windowEvent = ev);
-			}
-		break;
-		case DestroyNotify: {
-				WindowEvent ev;
-				ev.windowEventType = WindowEvent::DESTROYED;
-				return &(windowEvent = ev);
-		} break;
+				ev.type = Event::CLOSE;
+			return true;
 		case ConfigureNotify:
 		// TODO: What to do here?
 			//if (e.xconfigure.width != width || e.xconfigure.height != height || e.xconfigure.x != x || e.xconfigure.y != y)
 			{
-				WindowEvent ev;
-				ev.windowEventType = WindowEvent::SIZE;
-				ev.x = e.xconfigure.x;
-				ev.y = e.xconfigure.y;
-				ev.width = e.xconfigure.width;
-				ev.height = e.xconfigure.height;
-				ev.clientWidth = e.xconfigure.width; // TODO: Different value than width / height?
-				ev.clientHeight = e.xconfigure.height;
-				return &(windowEvent = ev);
+				ev.type = Event::RESIZE;
+				// TODO: Is this the new width height?
+				Event::Size size = { e.xconfigure.width, e.xconfigure.height };
+				ev.size = size;
 			}
-		break;
+			return true;
 		case ButtonPress:
 			if (e.xbutton.button == Button1)
 			{
-				MouseEvent ev;
-				ev.mouseEventType = MouseEvent::MOUSE_LEFT_DOWN;
-				ev.leftMouseDown = true;
-				ev.mouseX = e.xmotion.x;
-				ev.mouseY = e.xmotion.y;
-				return &(mouseEvent = ev);
+				ev.type = Event::MOUSE_DOWN;
+				Event::MouseButton mouseButton = { Event::LEFT, e.xmotion.x, e.xmotion.y };
+				ev.mouseButton = mouseButton;
+				return true;
 			}
-		break;
 			if (e.xbutton.button == Button2)
 			{
-				MouseEvent ev;
-				ev.mouseEventType = MouseEvent::MOUSE_RIGHT_DOWN;
-				ev.rightMouseDown = true;
-				ev.mouseX = e.xmotion.x;
-				ev.mouseY = e.xmotion.y;
-				return &(mouseEvent = ev);
+				ev.type = Event::MOUSE_DOWN;
+				Event::MouseButton mouseButton = { Event::RIGHT, e.xmotion.x, e.xmotion.y };
+				ev.mouseButton = mouseButton;
+				return true;
 			}
 		case ButtonRelease:
 			if (e.xbutton.button == Button1)
 			{
-				MouseEvent ev;
-				ev.mouseEventType = MouseEvent::MOUSE_LEFT_UP;
-				ev.leftMouseDown = false;
-				ev.mouseX = e.xmotion.x;
-				ev.mouseY = e.xmotion.y;
-				return &(mouseEvent = ev);
+				ev.type = Event::MOUSE_UP;
+				Event::MouseButton mouseButton = { Event::LEFT, e.xmotion.x, e.xmotion.y };
+				ev.mouseButton = mouseButton;
+				return true;
 			}
 			else if (e.xbutton.button == Button2)
 			{
-				MouseEvent ev;
-				ev.mouseEventType = MouseEvent::MOUSE_RIGHT_UP;
-				ev.rightMouseDown = false;
-				ev.mouseX = e.xmotion.y;
-				ev.mouseY = e.xmotion.y;
-				return &(mouseEvent = ev);
+				ev.type = Event::MOUSE_UP;
+				Event::MouseButton mouseButton = { Event::RIGHT, e.xmotion.x, e.xmotion.y };
+				ev.mouseButton = mouseButton;
+				return true;
 			}
 			else if (e.xbutton.button == Button4)
 			{
-				MouseEvent ev;
-				ev.mouseEventType = MouseEvent::MOUSE_WHEEL;
-				ev.mouseWheelDelta = 100;
-				return &(mouseEvent = ev);
+				ev.type = Event::MOUSE_WHEEL;
+				Event::MouseWheel mouseWheel = { 100, e.xmotion.x, e.xmotion.y };
+				ev.mouseWheel = mouseWheel;
+				return true;
 			}
 			else if (e.xbutton.button == Button5)
 			{
-				MouseEvent ev;
-				ev.mouseEventType = MouseEvent::MOUSE_WHEEL;
-				ev.mouseWheelDelta = -100;
-				return &(mouseEvent = ev);
+				ev.type = Event::MOUSE_WHEEL;
+				Event::MouseWheel mouseWheel = { -100, e.xmotion.x, e.xmotion.y };
+				ev.mouseWheel = mouseWheel;
+				return true;
 			}
 			break;
 		case MotionNotify: {
-			int mouseX;
-			int mouseY;
-
-			MouseEvent ev;
-			ev.mouseEventType = MouseEvent::MOUSE_MOVE;
-			ev.mouseX = e.xmotion.x;
-			ev.mouseY = e.xmotion.y;
-			
-			ev.leftMouseDown = (e.xmotion.state & Button1Mask);
-			ev.rightMouseDown = (e.xmotion.state & Button2Mask);
-			return &(mouseEvent = ev);
-		} break;
+			ev.type = Event::MOUSE_MOVE;
+            Event::MouseMove mouseMove = { 
+                (e.xmotion.state & Button1Mask) ? Event::LEFT : Event::NONE |
+                (false) ? Event::MIDDLE : Event::NONE |
+                (e.xmotion.state & Button2Mask) ? Event::RIGHT : Event::NONE,
+                e.xmotion.x, 
+                e.xmotion.y 
+            };
+            ev.mouseMove = mouseMove;
+		} return true;
 		case KeyPress:
 		case KeyRelease:{
-			KeyboardEvent::KeyboardEventType type = (e.type == KeyPress) ? KeyboardEvent::KEY_DOWN : KeyboardEvent::KEY_UP;
-			KeyboardEvent::UnicodeKeyId keyId = KeyboardEvent::UKID_NONE;
+			ev.type = (e.type == KeyPress) ? Event::KEY_DOWN : Event::KEY_UP;
+			Event::UnicodeKeyId keyId = Event::UKID_NONE;
 			
 			unsigned int mods;
 			KeySym keySym;
@@ -286,21 +233,22 @@ const Event* HandleEvent(Display* pDisplay, XEvent &e)
 			{
 				long unicode = keysym2ucs(keySym);
 				if (unicode != -1)
-					keyId = (KeyboardEvent::UnicodeKeyId)unicode;
+					keyId = (Event::UnicodeKeyId)unicode;
 				else
-					keyId = static_cast<KeyboardEvent::UnicodeKeyId>(keySym + KeyboardEvent::MINI3D_UNICODE_PRIVATE_AREA_OFFSET);
-				
-				KeyboardEvent::ModifierKeys modifiers =
-					(e.xkey.state & ShiftMask) ? KeyboardEvent::MODIFIER_SHIFT : KeyboardEvent::MODIFIER_NONE &
-					(e.xkey.state & ControlMask) ? KeyboardEvent::MODIFIER_CTRL : KeyboardEvent::MODIFIER_NONE &
-					(e.xkey.state & Mod1Mask) ? KeyboardEvent::MODIFIER_ALT : KeyboardEvent::MODIFIER_NONE;
+					keyId = static_cast<Event::UnicodeKeyId>(keySym + Event::MINI3D_UNICODE_PRIVATE_AREA_OFFSET);
 
-				KeyboardEvent ev(type, modifiers, keyId);
-				return &(keyboardEvent = ev);
-			}				
+				Event::Key key = {
+					(e.xkey.state & ShiftMask) ? Event::MODIFIER_SHIFT : Event::MODIFIER_NONE &
+					(e.xkey.state & ControlMask) ? Event::MODIFIER_CTRL : Event::MODIFIER_NONE &
+					(e.xkey.state & Mod1Mask) ? Event::MODIFIER_ALT : Event::MODIFIER_NONE,
+					keyId};
+				ev.key = key;
+
+				return true;
+			}
 		}break;
 	}
-	return 0;
+	return false;
 }
 
 #endif
