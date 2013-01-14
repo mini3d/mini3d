@@ -9,21 +9,28 @@
 namespace mini3d {
 namespace graphics {
 
+struct IGraphicsService;
 
 struct IVertexShader
 {
-	
-#define IVERTEXSHADER_INTERFACE(PURE_VIRTUAL)\
-\
-	virtual void* GetVertexShader(unsigned int& sizeInBytes) const PURE_VIRTUAL;\
+    enum DataType { R32_FLOAT, R32G32_FLOAT, R32G32B32_FLOAT, R32G32B32A32_FLOAT };
+    enum StreamRate { PER_VERTEX = 0, PER_INSTANCE = 1 };
 
+    // HLSL shaders bind vertex buffer input on semantic and semantic index.
+    // GLSL shaders bind vertex buffer input on variable name.
+    struct InputAttribute { char nameGLSL[32]; char semanticHLSL[32]; unsigned int semanticIndexHLSL; unsigned int slot; unsigned int offset; DataType type; StreamRate rate; };
 
-public:
+    struct ShaderParameter { char nameGLSL[32]; DataType type; };
 
-	IVERTEXSHADER_INTERFACE(=0);
+    static IVertexShader* New(IGraphicsService* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes, InputAttribute* pAttributes, unsigned int attributeCount);
 	~IVertexShader() {};
 
+    unsigned int GetInputAttributeCount() const;
+    void GetInputAttributes(InputAttribute* pAttributes) const;
 };
+
+
+
 }
 }
 

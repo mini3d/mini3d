@@ -5,84 +5,98 @@
 
 #ifdef _WIN32
 
-#include "platform_win32.hpp"
-#include "../../../windowrendertarget.hpp"
+#include "../../../graphicsservice.hpp"
+#ifdef MINI3D_GRAPHICSSERVICE_OPENGL
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <cstdlib>
-#include <cstdio>
+#include "../iplatform.hpp"
+#include "../openglwrapper.hpp"
 
 void mini3d_assert(bool expression, const char* text, ...);
 using namespace mini3d::graphics;
 
-namespace {
-    PIXELFORMATDESCRIPTOR defaultPixelFormatDescriptor = { sizeof(PIXELFORMATDESCRIPTOR), 1, PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER, PFD_TYPE_RGBA, 32, 0,0,0,0,0,0,0,0,0,0,0,0,0, 24, 0, 0, PFD_MAIN_PLANE };
-}
+PIXELFORMATDESCRIPTOR defaultPixelFormatDescriptor = { sizeof(PIXELFORMATDESCRIPTOR), 1, PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER, PFD_TYPE_RGBA, 32, 0,0,0,0,0,0,0,0,0,0,0,0,0, 24, 0, 0, PFD_MAIN_PLANE };
+
 
 ///////// PLATFORM WIN32 //////////////////////////////////////////////////////
 
-Platform_win32::Platform_win32() 
-{ 
-	mInternalWindow = CreateWindowEx(WS_EX_CLIENTEDGE, L"STATIC", L"Mini3DHiddenWindow", 0, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, HWND_MESSAGE, 0, GetModuleHandle(NULL), 0);
-    mDeviceContext = GetWindowDC(mInternalWindow);
+namespace mini3d {
+namespace graphics {
 
-    mCurrentFormat = ChoosePixelFormat(mDeviceContext, &defaultPixelFormatDescriptor);
-    mini3d_assert(mCurrentFormat != 0, "Failed to create default opengl context. CreatePixelFormat failed: (%u)", GetLastError());
+// Convenient wrapper for a win32 device handle that release the handle when it goes out of scope
+struct SafeHDC { HWND hWnd; HDC hDC; SafeHDC(HWND hWnd) : hWnd(hWnd) { hDC = GetWindowDC(hWnd); } ~SafeHDC() { ReleaseDC(hWnd, hDC); } operator HDC() { return hDC; }};
 
-    BOOL result = SetPixelFormat(mDeviceContext, mCurrentFormat, &defaultPixelFormatDescriptor);
-	mini3d_assert(result != 0, "Failed to create default opengl context. SetPixelFormat failed: (%u)", GetLastError());
+class Platform_win32 : public IPlatform
+{
+public:
+
+    void UnPrepareWindow(void* nativeWindow, void* nativeSurface)   { }
+    unsigned int GetNativeSurfaceWidth(void* nativeSurface) const   { RECT r; GetClientRect((HWND)nativeSurface, &r); return r.right - r.left; }
+    unsigned int GetNativeSurfaceHeight(void* nativeSurface) const  { RECT r; GetClientRect((HWND)nativeSurface, &r); return r.bottom - r.top; }
+    void SwapWindowBuffers(void* nativeSurface) { SafeHDC hDC((HWND)nativeSurface); SwapBuffers(hDC); }
+    
+    Platform_win32() 
+    { 
+	    mInternalWindow = CreateWindowEx(WS_EX_CLIENTEDGE, L"STATIC", L"Mini3DHiddenWindow", 0, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, HWND_MESSAGE, 0, GetModuleHandle(NULL), 0);
+        SafeHDC hDC(mInternalWindow);
+
+        int pixelFormat = ChoosePixelFormat(hDC, &defaultPixelFormatDescriptor);
+        mini3d_assert(pixelFormat != 0, "Failed to create default opengl context. CreatePixelFormat failed: (%u)", GetLastError());
+
+        BOOL result = SetPixelFormat(hDC, pixelFormat, &defaultPixelFormatDescriptor);
+	    mini3d_assert(result != 0, "Failed to create default opengl context. SetPixelFormat failed: (%u)", GetLastError());
 	
-    mRenderContext = wglCreateContext(mDeviceContext);
-	wglMakeCurrent(mDeviceContext, mRenderContext);
+        mRenderContext = wglCreateContext(hDC);
+	    wglMakeCurrent(hDC, mRenderContext);
+    }
+
+    ~Platform_win32()                                               
+    {  	
+        wglMakeCurrent(0, 0);
+        wglDeleteContext(mRenderContext);
+        wglDeleteContext(mRenderContext);
+	    DestroyWindow(mInternalWindow);
+    }
+
+    void* PrepareWindow(void* nativeWindow)
+    {
+        SafeHDC hDC((HWND)nativeWindow);
+	    int format = ChoosePixelFormat(hDC, &defaultPixelFormatDescriptor);
+	    SetPixelFormat(hDC, format, &defaultPixelFormatDescriptor);
+        
+        return nativeWindow;
+    }
+
+    void MakeCurrent(void* nativeSurface)
+    {
+        if (nativeSurface == 0)
+        {
+            SafeHDC hDC(mInternalWindow);
+            wglMakeCurrent(hDC, mRenderContext);
+        }
+        else
+        {
+            SafeHDC hDC((HWND)nativeSurface);
+            wglMakeCurrent(hDC, mRenderContext);
+	    }
+    }
+
+    
+
+private: 
+
+    struct Internal;
+    Internal* mpI;
+
+	// Default window and render context
+	HWND mInternalWindow;
+	HGLRC mRenderContext;
+};
+
+IPlatform* IPlatform::New() { return new Platform_win32(); }
+
+}
 }
 
-Platform_win32::~Platform_win32()                                               
-{  	
-    wglMakeCurrent(0, 0);
-    wglDeleteContext(mRenderContext);
-    wglDeleteContext(mRenderContext);
 
-    ReleaseDC(mInternalWindow, mDeviceContext);
-	DestroyWindow(mInternalWindow);
-}
-
-void Platform_win32::GetWindowContentSize(const MINI3D_WINDOW window, unsigned int &width, unsigned int &height) const
-{
-	RECT rect;
-	GetClientRect((HWND)window, &rect);
-
-	width = (rect.right - rect.left);
-	height = (rect.bottom - rect.top);
-
-    // get the width and height (must be bigger than 0)
-    if (width == 0) width = 1;
-    if (height == 0) height = 1;
-}
-
-void Platform_win32::SetRenderWindow(IWindowRenderTarget* pWindowRenderTarget)
-{
-	// TODO: Add comment about render contexts and the connection to the operating system.
-	if (pWindowRenderTarget == 0)
-	{
-		wglMakeCurrent(mDeviceContext, mRenderContext);
-	}
-	else
-	{
-        HWND hWnd = (HWND)pWindowRenderTarget->GetWindowHandle();
-        HDC hDC = GetWindowDC(hWnd);
-        wglMakeCurrent(hDC, mRenderContext);
-        ReleaseDC(hWnd, hDC);
-	}
-}
-
-void Platform_win32::SwapWindowBuffers(IWindowRenderTarget* pWindowRenderTarget)     
-{ 
-    HWND hWnd = (HWND)pWindowRenderTarget->GetWindowHandle();
-    HDC hDC = GetWindowDC(hWnd); 
-    SwapBuffers(hDC);
-    ReleaseDC(hWnd, hDC);
-}
-
-
+#endif
 #endif

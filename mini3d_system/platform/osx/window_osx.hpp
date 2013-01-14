@@ -3,11 +3,13 @@
 // This file is part of Mini3D <www.mini3d.org>
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
+#ifdef __APPLE__
+#import "TargetConditionals.h"
+#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+
 
 #ifndef MINI3D_WINDOW_WINDOW_OSX_H
 #define MINI3D_WINDOW_WINDOW_OSX_H
-
-#if defined(__APPLE__)
 
 #include "../../window.hpp"
 #include "../common/eventqueue.h"
@@ -40,5 +42,6 @@ public:
 }
 }
 
+#endif
 #endif
 #endif

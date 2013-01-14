@@ -8,353 +8,347 @@
 
 #ifdef _WIN32
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <GL/gl.h>
-#include "../common/glext.h"
 #include "../openglwrapper.hpp"
+#include "../common/glext.h"
 
 
 void mini3d_assert(bool expression, const char* text, ...);
 
-using namespace mini3d::graphics;
+namespace mini3d {
+namespace graphics {
 
-struct OpenGlWrapper::Internal
+////////// OPENGL 1.0 ///////////
+
+////////// OPENGL 1.2 ///////////
+PFNGLDRAWRANGEELEMENTSPROC _glDrawRangeElements;
+
+////////// OPENGL 1.3 ///////////
+PFNGLACTIVETEXTUREPROC _glActiveTexture;
+PFNGLGENERATEMIPMAPPROC _glGenerateMipmap;
+PFNGLCOMPRESSEDTEXIMAGE2DPROC _glCompressedTexImage2D;
+PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC _glCompressedTexSubImage2D;
+
+////////// OPENGL 1.5 ///////////
+PFNGLDELETEBUFFERSPROC _glDeleteBuffers;
+PFNGLGENBUFFERSPROC _glGenBuffers;
+PFNGLBINDBUFFERPROC _glBindBuffer;
+PFNGLMAPBUFFERPROC _glMapBuffer;
+PFNGLUNMAPBUFFERPROC _glUnmapBuffer;
+PFNGLBUFFERDATAPROC _glBufferData;
+PFNGLGETBUFFERSUBDATAPROC _glGetBufferSubData;
+
+////////// OPENGL 2.0 ///////////
+PFNGLISSHADERPROC _glIsShader;
+PFNGLCREATESHADERPROC _glCreateShader;
+PFNGLDELETESHADERPROC _glDeleteShader;
+PFNGLATTACHSHADERPROC _glAttachShader;
+PFNGLSHADERSOURCEPROC _glShaderSource;
+PFNGLGETSHADERSOURCEPROC _glGetShaderSource;
+PFNGLCOMPILESHADERPROC _glCompileShader;
+PFNGLGETSHADERIVPROC _glGetShaderiv;
+PFNGLGETSHADERINFOLOGPROC _glGetShaderInfoLog;
+PFNGLCREATEPROGRAMPROC _glCreateProgram;
+PFNGLDELETEPROGRAMPROC _glDeleteProgram;
+PFNGLLINKPROGRAMPROC _glLinkProgram;
+PFNGLUSEPROGRAMPROC _glUseProgram;
+PFNGLGETPROGRAMIVPROC _glGetProgramiv;
+PFNGLGETPROGRAMINFOLOGPROC _glGetProgramInfoLog;
+PFNGLVALIDATEPROGRAMPROC _glValidateProgram;
+PFNGLGETATTRIBLOCATIONPROC _glGetAttribLocation;
+PFNGLBINDATTRIBLOCATIONPROC _glBindAttribLocation;
+PFNGLGETACTIVEATTRIBPROC _glGetActiveAttrib;
+PFNGLUNIFORM1FPROC _glUniform1f;
+PFNGLUNIFORM2FPROC _glUniform2f;
+PFNGLUNIFORM3FPROC _glUniform3f;
+PFNGLUNIFORM4FPROC _glUniform4f;
+PFNGLUNIFORM4FVPROC _glUniform4fv;
+PFNGLUNIFORM1IPROC _glUniform1i;
+PFNGLUNIFORM2IPROC _glUniform2i;
+PFNGLUNIFORM3IPROC _glUniform3i;
+PFNGLUNIFORM4IPROC _glUniform4i;
+PFNGLUNIFORM4IVPROC _glUniform4iv;
+PFNGLUNIFORMMATRIX4FVPROC _glUniformMatrix4fv;
+PFNGLGETUNIFORMLOCATIONPROC _glGetUniformLocation;
+PFNGLGETACTIVEUNIFORMPROC _glGetActiveUniform;
+PFNGLVERTEXATTRIBPOINTERPROC _glVertexAttribPointer;
+PFNGLDISABLEVERTEXATTRIBARRAYPROC _glDisableVertexAttribArray;
+PFNGLENABLEVERTEXATTRIBARRAYPROC _glEnableVertexAttribArray;
+
+////////// OPENGL 3.1 ///////////
+PFNGLDRAWELEMENTSINSTANCEDPROC _glDrawElementsInstanced;
+
+////////// OPENGL 3.3 ///////////
+PFNGLVERTEXATTRIBDIVISORPROC _glVertexAttribDivisor;
+
+////////// OPENGL 4.2 ///////////
+PFNGLGENRENDERBUFFERSPROC _glGenRenderbuffers;
+PFNGLGENRENDERBUFFERSEXTPROC _glGenRenderbuffersEXT;
+PFNGLBINDRENDERBUFFERPROC _glBindRenderbuffer;
+PFNGLBINDRENDERBUFFEREXTPROC _glBindRenderbufferEXT;
+PFNGLDELETERENDERBUFFERSPROC _glDeleteRenderbuffers;
+PFNGLDELETERENDERBUFFERSEXTPROC _glDeleteRenderbuffersEXT;
+PFNGLRENDERBUFFERSTORAGEPROC _glRenderbufferStorage;
+PFNGLRENDERBUFFERSTORAGEEXTPROC _glRenderbufferStorageEXT;
+PFNGLGENFRAMEBUFFERSPROC _glGenFramebuffers;
+PFNGLGENFRAMEBUFFERSEXTPROC _glGenFramebuffersEXT;
+PFNGLBINDFRAMEBUFFERPROC _glBindFramebuffer;
+PFNGLBINDFRAMEBUFFEREXTPROC _glBindFramebufferEXT;
+PFNGLDELETEFRAMEBUFFERSPROC _glDeleteFramebuffers;
+PFNGLDELETEFRAMEBUFFERSEXTPROC _glDeleteFramebuffersEXT;
+PFNGLCHECKFRAMEBUFFERSTATUSPROC _glCheckFramebufferStatus;
+PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC _glCheckFramebufferStatusEXT;
+PFNGLFRAMEBUFFERTEXTURE2DPROC _glFramebufferTexture2D;
+PFNGLFRAMEBUFFERTEXTURE2DEXTPROC _glFramebufferTexture2DEXT;
+PFNGLFRAMEBUFFERRENDERBUFFERPROC _glFramebufferRenderbuffer;
+PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC _glFramebufferRenderbufferEXT;
+
+void initOpenGL()
 {
     ////////// OPENGL 1.0 ///////////
 
     ////////// OPENGL 1.2 ///////////
-    PFNGLDRAWRANGEELEMENTSPROC _glDrawRangeElements;
+    _glDrawRangeElements = (PFNGLDRAWRANGEELEMENTSPROC)wglGetProcAddress("glDrawRangeElements");
 
     ////////// OPENGL 1.3 ///////////
-    PFNGLACTIVETEXTUREPROC _glActiveTexture;
-    PFNGLGENERATEMIPMAPPROC _glGenerateMipmap;
-    PFNGLCOMPRESSEDTEXIMAGE2DPROC _glCompressedTexImage2D;
-    PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC _glCompressedTexSubImage2D;
+    _glActiveTexture = (PFNGLACTIVETEXTUREPROC)wglGetProcAddress("glActiveTexture");
+    _glGenerateMipmap = (PFNGLGENERATEMIPMAPPROC)wglGetProcAddress("glGenerateMipmap");
+    _glCompressedTexImage2D = (PFNGLCOMPRESSEDTEXIMAGE2DPROC)wglGetProcAddress("glCompressedTexImage2D");
+    _glCompressedTexSubImage2D = (PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC)wglGetProcAddress("glCompressedTexSubImage2D");
 
     ////////// OPENGL 1.5 ///////////
-    PFNGLDELETEBUFFERSPROC _glDeleteBuffers;
-    PFNGLGENBUFFERSPROC _glGenBuffers;
-    PFNGLBINDBUFFERPROC _glBindBuffer;
-    PFNGLMAPBUFFERPROC _glMapBuffer;
-    PFNGLUNMAPBUFFERPROC _glUnmapBuffer;
-    PFNGLBUFFERDATAPROC _glBufferData;
-    PFNGLGETBUFFERSUBDATAPROC _glGetBufferSubData;
+    _glDeleteBuffers = (PFNGLDELETEBUFFERSPROC)wglGetProcAddress("glDeleteBuffers");
+    _glGenBuffers = (PFNGLGENBUFFERSPROC)wglGetProcAddress("glGenBuffers");
+    _glBindBuffer = (PFNGLBINDBUFFERPROC)wglGetProcAddress("glBindBuffer");
+    _glMapBuffer = (PFNGLMAPBUFFERPROC)wglGetProcAddress("glMapBuffer");
+    _glUnmapBuffer = (PFNGLUNMAPBUFFERPROC)wglGetProcAddress("glUnmapBuffer");
+    _glBufferData = (PFNGLBUFFERDATAPROC)wglGetProcAddress("glBufferData");
+    _glGetBufferSubData = (PFNGLGETBUFFERSUBDATAPROC)wglGetProcAddress("glGetBufferSubData");
 
     ////////// OPENGL 2.0 ///////////
-    PFNGLISSHADERPROC _glIsShader;
-    PFNGLCREATESHADERPROC _glCreateShader;
-    PFNGLDELETESHADERPROC _glDeleteShader;
-    PFNGLATTACHSHADERPROC _glAttachShader;
-    PFNGLSHADERSOURCEPROC _glShaderSource;
-    PFNGLGETSHADERSOURCEPROC _glGetShaderSource;
-    PFNGLCOMPILESHADERPROC _glCompileShader;
-    PFNGLGETSHADERIVPROC _glGetShaderiv;
-    PFNGLGETSHADERINFOLOGPROC _glGetShaderInfoLog;
-    PFNGLCREATEPROGRAMPROC _glCreateProgram;
-    PFNGLDELETEPROGRAMPROC _glDeleteProgram;
-    PFNGLLINKPROGRAMPROC _glLinkProgram;
-    PFNGLUSEPROGRAMPROC _glUseProgram;
-    PFNGLGETPROGRAMIVPROC _glGetProgramiv;
-    PFNGLGETPROGRAMINFOLOGPROC _glGetProgramInfoLog;
-    PFNGLVALIDATEPROGRAMPROC _glValidateProgram;
-    PFNGLGETATTRIBLOCATIONPROC _glGetAttribLocation;
-    PFNGLBINDATTRIBLOCATIONPROC _glBindAttribLocation;
-    PFNGLGETACTIVEATTRIBPROC _glGetActiveAttrib;
-    PFNGLUNIFORM1FPROC _glUniform1f;
-    PFNGLUNIFORM2FPROC _glUniform2f;
-    PFNGLUNIFORM3FPROC _glUniform3f;
-    PFNGLUNIFORM4FPROC _glUniform4f;
-    PFNGLUNIFORM4FVPROC _glUniform4fv;
-    PFNGLUNIFORM1IPROC _glUniform1i;
-    PFNGLUNIFORM2IPROC _glUniform2i;
-    PFNGLUNIFORM3IPROC _glUniform3i;
-    PFNGLUNIFORM4IPROC _glUniform4i;
-    PFNGLUNIFORM4IVPROC _glUniform4iv;
-    PFNGLUNIFORMMATRIX4FVPROC _glUniformMatrix4fv;
-    PFNGLGETUNIFORMLOCATIONPROC _glGetUniformLocation;
-    PFNGLGETACTIVEUNIFORMPROC _glGetActiveUniform;
-    PFNGLVERTEXATTRIBPOINTERPROC _glVertexAttribPointer;
-    PFNGLDISABLEVERTEXATTRIBARRAYPROC _glDisableVertexAttribArray;
-    PFNGLENABLEVERTEXATTRIBARRAYPROC _glEnableVertexAttribArray;
+    _glIsShader = (PFNGLISSHADERPROC)wglGetProcAddress("glIsShader");
+    _glCreateShader = (PFNGLCREATESHADERPROC)wglGetProcAddress("glCreateShader");
+    _glDeleteShader = (PFNGLDELETESHADERPROC)wglGetProcAddress("glDeleteShader");
+    _glAttachShader = (PFNGLATTACHSHADERPROC)wglGetProcAddress("glAttachShader");
+    _glShaderSource = (PFNGLSHADERSOURCEPROC)wglGetProcAddress("glShaderSource");
+    _glGetShaderSource = (PFNGLGETSHADERSOURCEPROC)wglGetProcAddress("glGetShaderSource");
+    _glCompileShader = (PFNGLCOMPILESHADERPROC)wglGetProcAddress("glCompileShader");
+    _glGetShaderiv = (PFNGLGETSHADERIVPROC)wglGetProcAddress("glGetShaderiv");
+    _glGetShaderInfoLog = (PFNGLGETSHADERINFOLOGPROC)wglGetProcAddress("glGetShaderInfoLog");
+    _glCreateProgram = (PFNGLCREATEPROGRAMPROC)wglGetProcAddress("glCreateProgram");
+    _glDeleteProgram = (PFNGLDELETEPROGRAMPROC)wglGetProcAddress("glDeleteProgram");
+    _glLinkProgram = (PFNGLLINKPROGRAMPROC)wglGetProcAddress("glLinkProgram");
+    _glUseProgram = (PFNGLUSEPROGRAMPROC)wglGetProcAddress("glUseProgram");
+    _glGetProgramiv = (PFNGLGETPROGRAMIVPROC)wglGetProcAddress("glGetProgramiv");
+    _glGetProgramInfoLog = (PFNGLGETPROGRAMINFOLOGPROC)wglGetProcAddress("glGetProgramInfoLog");
+    _glValidateProgram = (PFNGLVALIDATEPROGRAMPROC)wglGetProcAddress("glValidateProgram");
+    _glGetAttribLocation = (PFNGLGETATTRIBLOCATIONPROC)wglGetProcAddress("glGetAttribLocation");
+    _glBindAttribLocation = (PFNGLBINDATTRIBLOCATIONPROC)wglGetProcAddress("glBindAttribLocation");
+    _glGetActiveAttrib = (PFNGLGETACTIVEATTRIBPROC)wglGetProcAddress("glGetActiveAttrib");
+    _glUniform1f = (PFNGLUNIFORM1FPROC)wglGetProcAddress("glUniform1f");
+    _glUniform2f = (PFNGLUNIFORM2FPROC)wglGetProcAddress("glUniform2f");
+    _glUniform3f = (PFNGLUNIFORM3FPROC)wglGetProcAddress("glUniform3f");
+    _glUniform4f = (PFNGLUNIFORM4FPROC)wglGetProcAddress("glUniform4f");
+    _glUniform4fv = (PFNGLUNIFORM4FVPROC)wglGetProcAddress("glUniform4fv");
+    _glUniform1i = (PFNGLUNIFORM1IPROC)wglGetProcAddress("glUniform1i");
+    _glUniform2i = (PFNGLUNIFORM2IPROC)wglGetProcAddress("glUniform2i");
+    _glUniform3i = (PFNGLUNIFORM3IPROC)wglGetProcAddress("glUniform3i");
+    _glUniform4i = (PFNGLUNIFORM4IPROC)wglGetProcAddress("glUniform4i");
+    _glUniform4iv = (PFNGLUNIFORM4IVPROC)wglGetProcAddress("glUniform4iv");
+    _glUniformMatrix4fv = (PFNGLUNIFORMMATRIX4FVPROC)wglGetProcAddress("glUniformMatrix4fv");
+    _glGetUniformLocation = (PFNGLGETUNIFORMLOCATIONPROC)wglGetProcAddress("glGetUniformLocation");
+    _glGetActiveUniform = (PFNGLGETACTIVEUNIFORMPROC)wglGetProcAddress("glGetActiveUniform");
+    _glVertexAttribPointer = (PFNGLVERTEXATTRIBPOINTERPROC)wglGetProcAddress("glVertexAttribPointer");
+    _glDisableVertexAttribArray = (PFNGLDISABLEVERTEXATTRIBARRAYPROC)wglGetProcAddress("glDisableVertexAttribArray");
+    _glEnableVertexAttribArray = (PFNGLENABLEVERTEXATTRIBARRAYPROC)wglGetProcAddress("glEnableVertexAttribArray");
 
     ////////// OPENGL 3.1 ///////////
-    PFNGLDRAWELEMENTSINSTANCEDPROC _glDrawElementsInstanced;
+    _glDrawElementsInstanced = (PFNGLDRAWELEMENTSINSTANCEDPROC)wglGetProcAddress("glDrawElementsInstanced");
 
     ////////// OPENGL 3.3 ///////////
-    PFNGLVERTEXATTRIBDIVISORPROC _glVertexAttribDivisor;
+    _glVertexAttribDivisor = (PFNGLVERTEXATTRIBDIVISORPROC)wglGetProcAddress("glVertexAttribDivisor");
 
     ////////// OPENGL 4.2 ///////////
-    PFNGLGENRENDERBUFFERSPROC _glGenRenderbuffers;
-    PFNGLGENRENDERBUFFERSEXTPROC _glGenRenderbuffersEXT;
-    PFNGLBINDRENDERBUFFERPROC _glBindRenderbuffer;
-    PFNGLBINDRENDERBUFFEREXTPROC _glBindRenderbufferEXT;
-    PFNGLDELETERENDERBUFFERSPROC _glDeleteRenderbuffers;
-    PFNGLDELETERENDERBUFFERSEXTPROC _glDeleteRenderbuffersEXT;
-    PFNGLRENDERBUFFERSTORAGEPROC _glRenderbufferStorage;
-    PFNGLRENDERBUFFERSTORAGEEXTPROC _glRenderbufferStorageEXT;
-    PFNGLGENFRAMEBUFFERSPROC _glGenFramebuffers;
-    PFNGLGENFRAMEBUFFERSEXTPROC _glGenFramebuffersEXT;
-    PFNGLBINDFRAMEBUFFERPROC _glBindFramebuffer;
-    PFNGLBINDFRAMEBUFFEREXTPROC _glBindFramebufferEXT;
-    PFNGLDELETEFRAMEBUFFERSPROC _glDeleteFramebuffers;
-    PFNGLDELETEFRAMEBUFFERSEXTPROC _glDeleteFramebuffersEXT;
-    PFNGLCHECKFRAMEBUFFERSTATUSPROC _glCheckFramebufferStatus;
-    PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC _glCheckFramebufferStatusEXT;
-    PFNGLFRAMEBUFFERTEXTURE2DPROC _glFramebufferTexture2D;
-    PFNGLFRAMEBUFFERTEXTURE2DEXTPROC _glFramebufferTexture2DEXT;
-    PFNGLFRAMEBUFFERRENDERBUFFERPROC _glFramebufferRenderbuffer;
-    PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC _glFramebufferRenderbufferEXT;
-};
+    _glGenRenderbuffers = (PFNGLGENRENDERBUFFERSPROC)wglGetProcAddress("glGenRenderbuffers");
+    _glGenRenderbuffersEXT = (PFNGLGENRENDERBUFFERSEXTPROC)wglGetProcAddress("glGenRenderbuffers");
+    _glBindRenderbuffer = (PFNGLBINDRENDERBUFFERPROC)wglGetProcAddress("glBindRenderbuffer");
+    _glBindRenderbufferEXT = (PFNGLBINDRENDERBUFFEREXTPROC)wglGetProcAddress("glBindRenderbuffer");
+    _glDeleteRenderbuffers = (PFNGLDELETERENDERBUFFERSPROC)wglGetProcAddress("glDeleteRenderbuffers");
+    _glDeleteRenderbuffersEXT = (PFNGLDELETERENDERBUFFERSEXTPROC)wglGetProcAddress("glDeleteRenderbuffers");
+    _glRenderbufferStorage = (PFNGLRENDERBUFFERSTORAGEPROC)wglGetProcAddress("glRenderbufferStorage");
+    _glRenderbufferStorageEXT = (PFNGLRENDERBUFFERSTORAGEEXTPROC)wglGetProcAddress("glRenderbufferStorage");
+    _glGenFramebuffers = (PFNGLGENFRAMEBUFFERSPROC)wglGetProcAddress("glGenFramebuffers");
+    _glGenFramebuffersEXT = (PFNGLGENFRAMEBUFFERSEXTPROC)wglGetProcAddress("glGenFramebuffers");
+    _glBindFramebuffer = (PFNGLBINDFRAMEBUFFERPROC)wglGetProcAddress("glBindFramebuffer");
+    _glBindFramebufferEXT = (PFNGLBINDFRAMEBUFFEREXTPROC)wglGetProcAddress("glBindFramebuffer");
+    _glDeleteFramebuffers = (PFNGLDELETEFRAMEBUFFERSPROC)wglGetProcAddress("glDeleteFramebuffers");
+    _glDeleteFramebuffersEXT = (PFNGLDELETEFRAMEBUFFERSEXTPROC)wglGetProcAddress("glDeleteFramebuffers");
+    _glCheckFramebufferStatus = (PFNGLCHECKFRAMEBUFFERSTATUSPROC)wglGetProcAddress("glCheckFramebufferStatus");
+    _glCheckFramebufferStatusEXT = (PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC)wglGetProcAddress("glCheckFramebufferStatus");
+    _glFramebufferTexture2D = (PFNGLFRAMEBUFFERTEXTURE2DPROC)wglGetProcAddress("glFramebufferTexture2D");
+    _glFramebufferTexture2DEXT = (PFNGLFRAMEBUFFERTEXTURE2DEXTPROC)wglGetProcAddress("glFramebufferTexture2D");
+    _glFramebufferRenderbuffer = (PFNGLFRAMEBUFFERRENDERBUFFERPROC)wglGetProcAddress("glFramebufferRenderbuffer");
+    _glFramebufferRenderbufferEXT = (PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC)wglGetProcAddress("glFramebufferRenderbuffer");
+}
 
-OpenGlWrapper::OpenGlWrapper()
-{
-
-    mpI = new Internal();
-
-    ////////// OPENGL 1.0 ///////////
+////////// OPENGL 1.0 ///////////
+GLenum glGetError() { return ::glGetError(); }
+const GLubyte* glGetString(GLenum name) { return ::glGetString(name); }
+void glBindTexture(GLenum target, GLuint texture) { ::glBindTexture(target, texture); }
+void glTexParameteri(GLenum target, GLenum pname, GLint param) { ::glTexParameteri(target, pname, param); }
+void glGetTexParameteriv(GLenum target, GLenum pname, GLint *params) { ::glGetTexParameteriv(target, pname, params); }
+void glGenTextures(GLsizei n, GLuint *textures) { ::glGenTextures(n, textures); }
+void glDeleteTextures(GLsizei n, const GLuint *textures) { ::glDeleteTextures(n, textures); }
+void glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid *pixels) { ::glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels); }
+void glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid *pixels) { ::glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels); }
+void glGetTexImage(GLenum target, GLint level, GLenum format, GLenum type, GLvoid *img) { ::glGetTexImage(target, level, format, type, img); }
+void glDrawBuffer(GLenum mode) { ::glDrawBuffer(mode); }
+void glReadBuffer(GLenum mode) { ::glReadBuffer(mode); }
+void glEnable(GLenum cap) { ::glEnable(cap); }
+void glDisable(GLenum cap) { ::glDisable(cap); }
+void glClear(GLbitfield mask) { ::glClear(mask); }
+void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha) { ::glClearColor(red, green, blue, alpha); }
+void glClearDepth(GLclampd depth) { ::glClearDepth(depth); }
+void glShadeModel(GLenum mode) { ::glShadeModel(mode); }
+void glDepthFunc(GLenum func) { ::glDepthFunc(func); }
+void glGetIntegerv(GLenum pname, GLint *params) { ::glGetIntegerv(pname, params); }
+void glCullFace(GLenum mode) { ::glCullFace(mode); }
+void glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices) { ::glDrawElements(mode, count, type, indices); }
+void glViewport(GLint x, GLint y, GLsizei width, GLsizei height) { ::glViewport(x, y, width, height); }
 
     ////////// OPENGL 1.2 ///////////
-    mpI->_glDrawRangeElements = (PFNGLDRAWRANGEELEMENTSPROC)wglGetProcAddress("glDrawRangeElements");
+void glDrawRangeElements(GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, const GLvoid *indices) { _glDrawRangeElements(mode, start, end, count, type, indices); }
 
     ////////// OPENGL 1.3 ///////////
-    mpI->_glActiveTexture = (PFNGLACTIVETEXTUREPROC)wglGetProcAddress("glActiveTexture");
-    mpI->_glGenerateMipmap = (PFNGLGENERATEMIPMAPPROC)wglGetProcAddress("glGenerateMipmap");
-    mpI->_glCompressedTexImage2D = (PFNGLCOMPRESSEDTEXIMAGE2DPROC)wglGetProcAddress("glCompressedTexImage2D");
-    mpI->_glCompressedTexSubImage2D = (PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC)wglGetProcAddress("glCompressedTexSubImage2D");
+void glActiveTexture(GLenum texture) { _glActiveTexture(texture); }
+void glGenerateMipmap(GLenum target) { _glGenerateMipmap(target); }
+void glCompressedTexImage2D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const GLvoid *data) { _glCompressedTexImage2D(target, level, internalformat, width, height, border, imageSize, data); }
+void glCompressedTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLsizei imageSize, const GLvoid *data) { _glCompressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, imageSize, data); }
 
     ////////// OPENGL 1.5 ///////////
-    mpI->_glDeleteBuffers = (PFNGLDELETEBUFFERSPROC)wglGetProcAddress("glDeleteBuffers");
-    mpI->_glGenBuffers = (PFNGLGENBUFFERSPROC)wglGetProcAddress("glGenBuffers");
-    mpI->_glBindBuffer = (PFNGLBINDBUFFERPROC)wglGetProcAddress("glBindBuffer");
-    mpI->_glMapBuffer = (PFNGLMAPBUFFERPROC)wglGetProcAddress("glMapBuffer");
-    mpI->_glUnmapBuffer = (PFNGLUNMAPBUFFERPROC)wglGetProcAddress("glUnmapBuffer");
-    mpI->_glBufferData = (PFNGLBUFFERDATAPROC)wglGetProcAddress("glBufferData");
-    mpI->_glGetBufferSubData = (PFNGLGETBUFFERSUBDATAPROC)wglGetProcAddress("glGetBufferSubData");
+void glDeleteBuffers(GLsizei n, const GLuint *buffers) { _glDeleteBuffers(n, buffers); }
+void glGenBuffers(GLsizei n, GLuint *buffers) { _glGenBuffers(n, buffers); }
+void glBindBuffer(GLenum target, GLuint buffer) { _glBindBuffer(target, buffer); }
+GLvoid* glMapBuffer(GLenum target, GLenum access) { return _glMapBuffer(target, access); }
+GLboolean glUnmapBuffer(GLenum target) { return _glUnmapBuffer(target); }
+void glBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage) { _glBufferData(target, size, data, usage); }
+void glGetBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, GLvoid *data) { _glGetBufferSubData(target, offset, size, data); }
 
     ////////// OPENGL 2.0 ///////////
-    mpI->_glIsShader = (PFNGLISSHADERPROC)wglGetProcAddress("glIsShader");
-    mpI->_glCreateShader = (PFNGLCREATESHADERPROC)wglGetProcAddress("glCreateShader");
-    mpI->_glDeleteShader = (PFNGLDELETESHADERPROC)wglGetProcAddress("glDeleteShader");
-    mpI->_glAttachShader = (PFNGLATTACHSHADERPROC)wglGetProcAddress("glAttachShader");
-    mpI->_glShaderSource = (PFNGLSHADERSOURCEPROC)wglGetProcAddress("glShaderSource");
-    mpI->_glGetShaderSource = (PFNGLGETSHADERSOURCEPROC)wglGetProcAddress("glGetShaderSource");
-    mpI->_glCompileShader = (PFNGLCOMPILESHADERPROC)wglGetProcAddress("glCompileShader");
-    mpI->_glGetShaderiv = (PFNGLGETSHADERIVPROC)wglGetProcAddress("glGetShaderiv");
-    mpI->_glGetShaderInfoLog = (PFNGLGETSHADERINFOLOGPROC)wglGetProcAddress("glGetShaderInfoLog");
-    mpI->_glCreateProgram = (PFNGLCREATEPROGRAMPROC)wglGetProcAddress("glCreateProgram");
-    mpI->_glDeleteProgram = (PFNGLDELETEPROGRAMPROC)wglGetProcAddress("glDeleteProgram");
-    mpI->_glLinkProgram = (PFNGLLINKPROGRAMPROC)wglGetProcAddress("glLinkProgram");
-    mpI->_glUseProgram = (PFNGLUSEPROGRAMPROC)wglGetProcAddress("glUseProgram");
-    mpI->_glGetProgramiv = (PFNGLGETPROGRAMIVPROC)wglGetProcAddress("glGetProgramiv");
-    mpI->_glGetProgramInfoLog = (PFNGLGETPROGRAMINFOLOGPROC)wglGetProcAddress("glGetProgramInfoLog");
-    mpI->_glValidateProgram = (PFNGLVALIDATEPROGRAMPROC)wglGetProcAddress("glValidateProgram");
-    mpI->_glGetAttribLocation = (PFNGLGETATTRIBLOCATIONPROC)wglGetProcAddress("glGetAttribLocation");
-    mpI->_glBindAttribLocation = (PFNGLBINDATTRIBLOCATIONPROC)wglGetProcAddress("glBindAttribLocation");
-    mpI->_glGetActiveAttrib = (PFNGLGETACTIVEATTRIBPROC)wglGetProcAddress("glGetActiveAttrib");
-    mpI->_glUniform1f = (PFNGLUNIFORM1FPROC)wglGetProcAddress("glUniform1f");
-    mpI->_glUniform2f = (PFNGLUNIFORM2FPROC)wglGetProcAddress("glUniform2f");
-    mpI->_glUniform3f = (PFNGLUNIFORM3FPROC)wglGetProcAddress("glUniform3f");
-    mpI->_glUniform4f = (PFNGLUNIFORM4FPROC)wglGetProcAddress("glUniform4f");
-    mpI->_glUniform4fv = (PFNGLUNIFORM4FVPROC)wglGetProcAddress("glUniform4fv");
-    mpI->_glUniform1i = (PFNGLUNIFORM1IPROC)wglGetProcAddress("glUniform1i");
-    mpI->_glUniform2i = (PFNGLUNIFORM2IPROC)wglGetProcAddress("glUniform2i");
-    mpI->_glUniform3i = (PFNGLUNIFORM3IPROC)wglGetProcAddress("glUniform3i");
-    mpI->_glUniform4i = (PFNGLUNIFORM4IPROC)wglGetProcAddress("glUniform4i");
-    mpI->_glUniform4iv = (PFNGLUNIFORM4IVPROC)wglGetProcAddress("glUniform4iv");
-    mpI->_glUniformMatrix4fv = (PFNGLUNIFORMMATRIX4FVPROC)wglGetProcAddress("glUniformMatrix4fv");
-    mpI->_glGetUniformLocation = (PFNGLGETUNIFORMLOCATIONPROC)wglGetProcAddress("glGetUniformLocation");
-    mpI->_glGetActiveUniform = (PFNGLGETACTIVEUNIFORMPROC)wglGetProcAddress("glGetActiveUniform");
-    mpI->_glVertexAttribPointer = (PFNGLVERTEXATTRIBPOINTERPROC)wglGetProcAddress("glVertexAttribPointer");
-    mpI->_glDisableVertexAttribArray = (PFNGLDISABLEVERTEXATTRIBARRAYPROC)wglGetProcAddress("glDisableVertexAttribArray");
-    mpI->_glEnableVertexAttribArray = (PFNGLENABLEVERTEXATTRIBARRAYPROC)wglGetProcAddress("glEnableVertexAttribArray");
+GLboolean glIsShader(GLuint shader) { return _glIsShader(shader); }
+GLuint glCreateShader(GLenum type) { return _glCreateShader(type); }
+void glDeleteShader(GLuint shader) { _glDeleteShader(shader); }
+void glAttachShader(GLuint program, GLuint shader) { _glAttachShader(program, shader); }
+void glShaderSource(GLuint shader, GLsizei count, const GLchar* *string, const GLint *length) { _glShaderSource(shader, count, string, length); }
+void glGetShaderSource(GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *source) { _glGetShaderSource(shader, bufSize, length, source); }
+void glCompileShader(GLuint shader) { _glCompileShader(shader); }
+void glGetShaderiv(GLuint shader, GLenum pname, GLint *params) { _glGetShaderiv(shader, pname, params); }
+void glGetShaderInfoLog(GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *infoLog) { _glGetShaderInfoLog(shader, bufSize, length, infoLog); }
+GLuint glCreateProgram() { return _glCreateProgram(); }
+void glDeleteProgram(GLuint program) { _glDeleteProgram(program); }
+void glLinkProgram(GLuint program) { _glLinkProgram(program); }
+void glUseProgram(GLuint program) { _glUseProgram(program); }
+void glGetProgramiv(GLuint program, GLenum pname, GLint *params) { _glGetProgramiv(program, pname, params); }
+void glGetProgramInfoLog(GLuint program, GLsizei bufSize, GLsizei *length, GLchar *infoLog) { _glGetProgramInfoLog(program, bufSize, length, infoLog); }
+void glValidateProgram(GLuint program) { _glValidateProgram(program); }
+GLint glGetAttribLocation(GLuint program, const GLchar *name) { return _glGetAttribLocation(program, name); }
+void glBindAttribLocation(GLuint program, GLuint index, const GLchar *name) { _glBindAttribLocation(program, index, name); }
+void glGetActiveAttrib(GLuint program, GLuint index, GLsizei bufSize, GLsizei *length, GLint *size, GLenum *type, GLchar *name) { _glGetActiveAttrib(program, index, bufSize, length, size, type, name); }
+void glUniform1f(GLint location, GLfloat v0) { _glUniform1f(location, v0); }
+void glUniform2f(GLint location, GLfloat v0, GLfloat v1) { _glUniform2f(location, v0, v1); }
+void glUniform3f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2) { _glUniform3f(location, v0, v1, v2); }
+void glUniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3) { _glUniform4f(location, v0, v1, v2, v3); }
+void glUniform4fv(GLint location, GLsizei count, const GLfloat *value) { _glUniform4fv(location, count, value); }
+void glUniform1i(GLint location, GLint v0) { _glUniform1i(location, v0); }
+void glUniform2i(GLint location, GLint v0, GLint v1) { _glUniform2i(location, v0, v1); }
+void glUniform3i(GLint location, GLint v0, GLint v1, GLint v2) { _glUniform3i(location, v0, v1, v2); }
+void glUniform4i(GLint location, GLint v0, GLint v1, GLint v2, GLint v3) { _glUniform4i(location, v0, v1, v2, v3); }
+void glUniform4iv(GLint location, GLsizei count, const GLint *value) { _glUniform4iv(location, count, value); }
+void glUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value) { _glUniformMatrix4fv(location, count, transpose, value); }
+GLint glGetUniformLocation(GLuint program, const GLchar *name) { return _glGetUniformLocation(program, name); }
+void glGetActiveUniform(GLuint program, GLuint index, GLsizei bufSize, GLsizei *length, GLint *size, GLenum *type, GLchar *name) { _glGetActiveUniform(program, index, bufSize, length, size, type, name); }
+void glVertexAttribPointer(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid *pointer) { _glVertexAttribPointer(index, size, type, normalized, stride, pointer); }
+void glDisableVertexAttribArray(GLuint index) { _glDisableVertexAttribArray(index); }
+void glEnableVertexAttribArray(GLuint index) { _glEnableVertexAttribArray(index); }
 
     ////////// OPENGL 3.1 ///////////
-    mpI->_glDrawElementsInstanced = (PFNGLDRAWELEMENTSINSTANCEDPROC)wglGetProcAddress("glDrawElementsInstanced");
+void glDrawElementsInstanced(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices, GLsizei primcount) { _glDrawElementsInstanced(mode, count, type, indices, primcount); }
 
     ////////// OPENGL 3.3 ///////////
-    mpI->_glVertexAttribDivisor = (PFNGLVERTEXATTRIBDIVISORPROC)wglGetProcAddress("glVertexAttribDivisor");
+void glVertexAttribDivisor(GLuint index, GLuint divisor) { _glVertexAttribDivisor(index, divisor); }
 
     ////////// OPENGL 4.2 ///////////
-    mpI->_glGenRenderbuffers = (PFNGLGENRENDERBUFFERSPROC)wglGetProcAddress("glGenRenderbuffers");
-    mpI->_glGenRenderbuffersEXT = (PFNGLGENRENDERBUFFERSEXTPROC)wglGetProcAddress("glGenRenderbuffers");
-    mpI->_glBindRenderbuffer = (PFNGLBINDRENDERBUFFERPROC)wglGetProcAddress("glBindRenderbuffer");
-    mpI->_glBindRenderbufferEXT = (PFNGLBINDRENDERBUFFEREXTPROC)wglGetProcAddress("glBindRenderbuffer");
-    mpI->_glDeleteRenderbuffers = (PFNGLDELETERENDERBUFFERSPROC)wglGetProcAddress("glDeleteRenderbuffers");
-    mpI->_glDeleteRenderbuffersEXT = (PFNGLDELETERENDERBUFFERSEXTPROC)wglGetProcAddress("glDeleteRenderbuffers");
-    mpI->_glRenderbufferStorage = (PFNGLRENDERBUFFERSTORAGEPROC)wglGetProcAddress("glRenderbufferStorage");
-    mpI->_glRenderbufferStorageEXT = (PFNGLRENDERBUFFERSTORAGEEXTPROC)wglGetProcAddress("glRenderbufferStorage");
-    mpI->_glGenFramebuffers = (PFNGLGENFRAMEBUFFERSPROC)wglGetProcAddress("glGenFramebuffers");
-    mpI->_glGenFramebuffersEXT = (PFNGLGENFRAMEBUFFERSEXTPROC)wglGetProcAddress("glGenFramebuffers");
-    mpI->_glBindFramebuffer = (PFNGLBINDFRAMEBUFFERPROC)wglGetProcAddress("glBindFramebuffer");
-    mpI->_glBindFramebufferEXT = (PFNGLBINDFRAMEBUFFEREXTPROC)wglGetProcAddress("glBindFramebuffer");
-    mpI->_glDeleteFramebuffers = (PFNGLDELETEFRAMEBUFFERSPROC)wglGetProcAddress("glDeleteFramebuffers");
-    mpI->_glDeleteFramebuffersEXT = (PFNGLDELETEFRAMEBUFFERSEXTPROC)wglGetProcAddress("glDeleteFramebuffers");
-    mpI->_glCheckFramebufferStatus = (PFNGLCHECKFRAMEBUFFERSTATUSPROC)wglGetProcAddress("glCheckFramebufferStatus");
-    mpI->_glCheckFramebufferStatusEXT = (PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC)wglGetProcAddress("glCheckFramebufferStatus");
-    mpI->_glFramebufferTexture2D = (PFNGLFRAMEBUFFERTEXTURE2DPROC)wglGetProcAddress("glFramebufferTexture2D");
-    mpI->_glFramebufferTexture2DEXT = (PFNGLFRAMEBUFFERTEXTURE2DEXTPROC)wglGetProcAddress("glFramebufferTexture2D");
-    mpI->_glFramebufferRenderbuffer = (PFNGLFRAMEBUFFERRENDERBUFFERPROC)wglGetProcAddress("glFramebufferRenderbuffer");
-    mpI->_glFramebufferRenderbufferEXT = (PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC)wglGetProcAddress("glFramebufferRenderbuffer");
-}
-
-    ////////// OPENGL 1.0 ///////////
-GLenum OpenGlWrapper::glGetError() { return ::glGetError(); }
-const GLubyte* OpenGlWrapper::glGetString(GLenum name) { return ::glGetString(name); }
-void OpenGlWrapper::glBindTexture(GLenum target, GLuint texture) { ::glBindTexture(target, texture); }
-void OpenGlWrapper::glTexParameteri(GLenum target, GLenum pname, GLint param) { ::glTexParameteri(target, pname, param); }
-void OpenGlWrapper::glGetTexParameteriv(GLenum target, GLenum pname, GLint *params) { ::glGetTexParameteriv(target, pname, params); }
-void OpenGlWrapper::glGenTextures(GLsizei n, GLuint *textures) { ::glGenTextures(n, textures); }
-void OpenGlWrapper::glDeleteTextures(GLsizei n, const GLuint *textures) { ::glDeleteTextures(n, textures); }
-void OpenGlWrapper::glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid *pixels) { ::glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels); }
-void OpenGlWrapper::glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid *pixels) { ::glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels); }
-void OpenGlWrapper::glGetTexImage(GLenum target, GLint level, GLenum format, GLenum type, GLvoid *img) { ::glGetTexImage(target, level, format, type, img); }
-void OpenGlWrapper::glDrawBuffer(GLenum mode) { ::glDrawBuffer(mode); }
-void OpenGlWrapper::glReadBuffer(GLenum mode) { ::glReadBuffer(mode); }
-void OpenGlWrapper::glEnable(GLenum cap) { ::glEnable(cap); }
-void OpenGlWrapper::glDisable(GLenum cap) { ::glDisable(cap); }
-void OpenGlWrapper::glClear(GLbitfield mask) { ::glClear(mask); }
-void OpenGlWrapper::glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha) { ::glClearColor(red, green, blue, alpha); }
-void OpenGlWrapper::glClearDepth(GLclampd depth) { ::glClearDepth(depth); }
-void OpenGlWrapper::glShadeModel(GLenum mode) { ::glShadeModel(mode); }
-void OpenGlWrapper::glDepthFunc(GLenum func) { ::glDepthFunc(func); }
-void OpenGlWrapper::glGetIntegerv(GLenum pname, GLint *params) { ::glGetIntegerv(pname, params); }
-void OpenGlWrapper::glCullFace(GLenum mode) { ::glCullFace(mode); }
-void OpenGlWrapper::glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices) { ::glDrawElements(mode, count, type, indices); }
-void OpenGlWrapper::glViewport(GLint x, GLint y, GLsizei width, GLsizei height) { ::glViewport(x, y, width, height); }
-
-    ////////// OPENGL 1.2 ///////////
-void OpenGlWrapper::glDrawRangeElements(GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, const GLvoid *indices) { mpI->_glDrawRangeElements(mode, start, end, count, type, indices); }
-
-    ////////// OPENGL 1.3 ///////////
-void OpenGlWrapper::glActiveTexture(GLenum texture) { mpI->_glActiveTexture(texture); }
-void OpenGlWrapper::glGenerateMipmap(GLenum target) { mpI->_glGenerateMipmap(target); }
-void OpenGlWrapper::glCompressedTexImage2D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const GLvoid *data) { mpI->_glCompressedTexImage2D(target, level, internalformat, width, height, border, imageSize, data); }
-void OpenGlWrapper::glCompressedTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLsizei imageSize, const GLvoid *data) { mpI->_glCompressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, imageSize, data); }
-
-    ////////// OPENGL 1.5 ///////////
-void OpenGlWrapper::glDeleteBuffers(GLsizei n, const GLuint *buffers) { mpI->_glDeleteBuffers(n, buffers); }
-void OpenGlWrapper::glGenBuffers(GLsizei n, GLuint *buffers) { mpI->_glGenBuffers(n, buffers); }
-void OpenGlWrapper::glBindBuffer(GLenum target, GLuint buffer) { mpI->_glBindBuffer(target, buffer); }
-GLvoid* OpenGlWrapper::glMapBuffer(GLenum target, GLenum access) { return mpI->_glMapBuffer(target, access); }
-GLboolean OpenGlWrapper::glUnmapBuffer(GLenum target) { return mpI->_glUnmapBuffer(target); }
-void OpenGlWrapper::glBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage) { mpI->_glBufferData(target, size, data, usage); }
-void OpenGlWrapper::glGetBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, GLvoid *data) { mpI->_glGetBufferSubData(target, offset, size, data); }
-
-    ////////// OPENGL 2.0 ///////////
-GLboolean OpenGlWrapper::glIsShader(GLuint shader) { return mpI->_glIsShader(shader); }
-GLuint OpenGlWrapper::glCreateShader(GLenum type) { return mpI->_glCreateShader(type); }
-void OpenGlWrapper::glDeleteShader(GLuint shader) { mpI->_glDeleteShader(shader); }
-void OpenGlWrapper::glAttachShader(GLuint program, GLuint shader) { mpI->_glAttachShader(program, shader); }
-void OpenGlWrapper::glShaderSource(GLuint shader, GLsizei count, const GLchar* *string, const GLint *length) { mpI->_glShaderSource(shader, count, string, length); }
-void OpenGlWrapper::glGetShaderSource(GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *source) { mpI->_glGetShaderSource(shader, bufSize, length, source); }
-void OpenGlWrapper::glCompileShader(GLuint shader) { mpI->_glCompileShader(shader); }
-void OpenGlWrapper::glGetShaderiv(GLuint shader, GLenum pname, GLint *params) { mpI->_glGetShaderiv(shader, pname, params); }
-void OpenGlWrapper::glGetShaderInfoLog(GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *infoLog) { mpI->_glGetShaderInfoLog(shader, bufSize, length, infoLog); }
-GLuint OpenGlWrapper::glCreateProgram() { return mpI->_glCreateProgram(); }
-void OpenGlWrapper::glDeleteProgram(GLuint program) { mpI->_glDeleteProgram(program); }
-void OpenGlWrapper::glLinkProgram(GLuint program) { mpI->_glLinkProgram(program); }
-void OpenGlWrapper::glUseProgram(GLuint program) { mpI->_glUseProgram(program); }
-void OpenGlWrapper::glGetProgramiv(GLuint program, GLenum pname, GLint *params) { mpI->_glGetProgramiv(program, pname, params); }
-void OpenGlWrapper::glGetProgramInfoLog(GLuint program, GLsizei bufSize, GLsizei *length, GLchar *infoLog) { mpI->_glGetProgramInfoLog(program, bufSize, length, infoLog); }
-void OpenGlWrapper::glValidateProgram(GLuint program) { mpI->_glValidateProgram(program); }
-GLint OpenGlWrapper::glGetAttribLocation(GLuint program, const GLchar *name) { return mpI->_glGetAttribLocation(program, name); }
-void OpenGlWrapper::glBindAttribLocation(GLuint program, GLuint index, const GLchar *name) { mpI->_glBindAttribLocation(program, index, name); }
-void OpenGlWrapper::glGetActiveAttrib(GLuint program, GLuint index, GLsizei bufSize, GLsizei *length, GLint *size, GLenum *type, GLchar *name) { mpI->_glGetActiveAttrib(program, index, bufSize, length, size, type, name); }
-void OpenGlWrapper::glUniform1f(GLint location, GLfloat v0) { mpI->_glUniform1f(location, v0); }
-void OpenGlWrapper::glUniform2f(GLint location, GLfloat v0, GLfloat v1) { mpI->_glUniform2f(location, v0, v1); }
-void OpenGlWrapper::glUniform3f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2) { mpI->_glUniform3f(location, v0, v1, v2); }
-void OpenGlWrapper::glUniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3) { mpI->_glUniform4f(location, v0, v1, v2, v3); }
-void OpenGlWrapper::glUniform4fv(GLint location, GLsizei count, const GLfloat *value) { mpI->_glUniform4fv(location, count, value); }
-void OpenGlWrapper::glUniform1i(GLint location, GLint v0) { mpI->_glUniform1i(location, v0); }
-void OpenGlWrapper::glUniform2i(GLint location, GLint v0, GLint v1) { mpI->_glUniform2i(location, v0, v1); }
-void OpenGlWrapper::glUniform3i(GLint location, GLint v0, GLint v1, GLint v2) { mpI->_glUniform3i(location, v0, v1, v2); }
-void OpenGlWrapper::glUniform4i(GLint location, GLint v0, GLint v1, GLint v2, GLint v3) { mpI->_glUniform4i(location, v0, v1, v2, v3); }
-void OpenGlWrapper::glUniform4iv(GLint location, GLsizei count, const GLint *value) { mpI->_glUniform4iv(location, count, value); }
-void OpenGlWrapper::glUniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value) { mpI->_glUniformMatrix4fv(location, count, transpose, value); }
-GLint OpenGlWrapper::glGetUniformLocation(GLuint program, const GLchar *name) { return mpI->_glGetUniformLocation(program, name); }
-void OpenGlWrapper::glGetActiveUniform(GLuint program, GLuint index, GLsizei bufSize, GLsizei *length, GLint *size, GLenum *type, GLchar *name) { mpI->_glGetActiveUniform(program, index, bufSize, length, size, type, name); }
-void OpenGlWrapper::glVertexAttribPointer(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid *pointer) { mpI->_glVertexAttribPointer(index, size, type, normalized, stride, pointer); }
-void OpenGlWrapper::glDisableVertexAttribArray(GLuint index) { mpI->_glDisableVertexAttribArray(index); }
-void OpenGlWrapper::glEnableVertexAttribArray(GLuint index) { mpI->_glEnableVertexAttribArray(index); }
-
-    ////////// OPENGL 3.1 ///////////
-void OpenGlWrapper::glDrawElementsInstanced(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices, GLsizei primcount) { mpI->_glDrawElementsInstanced(mode, count, type, indices, primcount); }
-
-    ////////// OPENGL 3.3 ///////////
-void OpenGlWrapper::glVertexAttribDivisor(GLuint index, GLuint divisor) { mpI->_glVertexAttribDivisor(index, divisor); }
-
-    ////////// OPENGL 4.2 ///////////
-void OpenGlWrapper::glGenRenderbuffers(GLsizei n, GLuint *renderbuffers)
+void glGenRenderbuffers(GLsizei n, GLuint *renderbuffers)
 {
-    if (mpI->_glGenRenderbuffers)  mpI->_glGenRenderbuffers(n, renderbuffers);
-    else if (mpI->_glGenRenderbuffersEXT)  mpI->_glGenRenderbuffersEXT(n, renderbuffers);
+    if (_glGenRenderbuffers)  _glGenRenderbuffers(n, renderbuffers);
+    else if (_glGenRenderbuffersEXT)  _glGenRenderbuffersEXT(n, renderbuffers);
     else mini3d_assert(false, "OpenGL driver does not support EXT_framebuffer_object");
 }
 
-void OpenGlWrapper::glBindRenderbuffer(GLenum target, GLuint renderbuffer)
+void glBindRenderbuffer(GLenum target, GLuint renderbuffer)
 {
-    if (mpI->_glBindRenderbuffer)  mpI->_glBindRenderbuffer(target, renderbuffer);
-    else if (mpI->_glBindRenderbufferEXT)  mpI->_glBindRenderbufferEXT(target, renderbuffer);
+    if (_glBindRenderbuffer)  _glBindRenderbuffer(target, renderbuffer);
+    else if (_glBindRenderbufferEXT)  _glBindRenderbufferEXT(target, renderbuffer);
     else mini3d_assert(false, "OpenGL driver does not support EXT_framebuffer_object");
 }
 
-void OpenGlWrapper::glDeleteRenderbuffers(GLsizei n, const GLuint *renderbuffers)
+void glDeleteRenderbuffers(GLsizei n, const GLuint *renderbuffers)
 {
-    if (mpI->_glDeleteRenderbuffers)  mpI->_glDeleteRenderbuffers(n, renderbuffers);
-    else if (mpI->_glDeleteRenderbuffersEXT)  mpI->_glDeleteRenderbuffersEXT(n, renderbuffers);
+    if (_glDeleteRenderbuffers)  _glDeleteRenderbuffers(n, renderbuffers);
+    else if (_glDeleteRenderbuffersEXT)  _glDeleteRenderbuffersEXT(n, renderbuffers);
     else mini3d_assert(false, "OpenGL driver does not support EXT_framebuffer_object");
 }
 
-void OpenGlWrapper::glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GLsizei height)
+void glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GLsizei height)
 {
-    if (mpI->_glRenderbufferStorage)  mpI->_glRenderbufferStorage(target, internalformat, width, height);
-    else if (mpI->_glRenderbufferStorageEXT)  mpI->_glRenderbufferStorageEXT(target, internalformat, width, height);
+    if (_glRenderbufferStorage)  _glRenderbufferStorage(target, internalformat, width, height);
+    else if (_glRenderbufferStorageEXT)  _glRenderbufferStorageEXT(target, internalformat, width, height);
     else mini3d_assert(false, "OpenGL driver does not support EXT_framebuffer_object");
 }
 
-void OpenGlWrapper::glGenFramebuffers(GLsizei n, GLuint *framebuffers)
+void glGenFramebuffers(GLsizei n, GLuint *framebuffers)
 {
-    if (mpI->_glGenFramebuffers)  mpI->_glGenFramebuffers(n, framebuffers);
-    else if (mpI->_glGenFramebuffersEXT)  mpI->_glGenFramebuffersEXT(n, framebuffers);
+    if (_glGenFramebuffers)  _glGenFramebuffers(n, framebuffers);
+    else if (_glGenFramebuffersEXT)  _glGenFramebuffersEXT(n, framebuffers);
     else mini3d_assert(false, "OpenGL driver does not support EXT_framebuffer_object");
 }
 
-void OpenGlWrapper::glBindFramebuffer(GLenum target, GLuint framebuffer)
+void glBindFramebuffer(GLenum target, GLuint framebuffer)
 {
-    if (mpI->_glBindFramebuffer)  mpI->_glBindFramebuffer(target, framebuffer);
-    else if (mpI->_glBindFramebufferEXT)  mpI->_glBindFramebufferEXT(target, framebuffer);
+    if (_glBindFramebuffer)  _glBindFramebuffer(target, framebuffer);
+    else if (_glBindFramebufferEXT)  _glBindFramebufferEXT(target, framebuffer);
     else mini3d_assert(false, "OpenGL driver does not support EXT_framebuffer_object");
 }
 
-void OpenGlWrapper::glDeleteFramebuffers(GLsizei n, const GLuint *framebuffers)
+void glDeleteFramebuffers(GLsizei n, const GLuint *framebuffers)
 {
-    if (mpI->_glDeleteFramebuffers)  mpI->_glDeleteFramebuffers(n, framebuffers);
-    else if (mpI->_glDeleteFramebuffersEXT)  mpI->_glDeleteFramebuffersEXT(n, framebuffers);
+    if (_glDeleteFramebuffers)  _glDeleteFramebuffers(n, framebuffers);
+    else if (_glDeleteFramebuffersEXT)  _glDeleteFramebuffersEXT(n, framebuffers);
     else mini3d_assert(false, "OpenGL driver does not support EXT_framebuffer_object");
 }
 
-GLenum OpenGlWrapper::glCheckFramebufferStatus(GLenum target)
+GLenum glCheckFramebufferStatus(GLenum target)
 {
-    if (mpI->_glCheckFramebufferStatus) return mpI->_glCheckFramebufferStatus(target);
-    else if (mpI->_glCheckFramebufferStatusEXT) return mpI->_glCheckFramebufferStatusEXT(target);
+    if (_glCheckFramebufferStatus) return _glCheckFramebufferStatus(target);
+    else if (_glCheckFramebufferStatusEXT) return _glCheckFramebufferStatusEXT(target);
     else mini3d_assert(false, "OpenGL driver does not support EXT_framebuffer_object");
     return 0;
 }
 
-void OpenGlWrapper::glFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level)
+void glFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level)
 {
-    if (mpI->_glFramebufferTexture2D)  mpI->_glFramebufferTexture2D(target, attachment, textarget, texture, level);
-    else if (mpI->_glFramebufferTexture2DEXT)  mpI->_glFramebufferTexture2DEXT(target, attachment, textarget, texture, level);
+    if (_glFramebufferTexture2D)  _glFramebufferTexture2D(target, attachment, textarget, texture, level);
+    else if (_glFramebufferTexture2DEXT)  _glFramebufferTexture2DEXT(target, attachment, textarget, texture, level);
     else mini3d_assert(false, "OpenGL driver does not support EXT_framebuffer_object");
 }
 
-void OpenGlWrapper::glFramebufferRenderbuffer(GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer)
+void glFramebufferRenderbuffer(GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer)
 {
-    if (mpI->_glFramebufferRenderbuffer)  mpI->_glFramebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer);
-    else if (mpI->_glFramebufferRenderbufferEXT)  mpI->_glFramebufferRenderbufferEXT(target, attachment, renderbuffertarget, renderbuffer);
+    if (_glFramebufferRenderbuffer)  _glFramebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer);
+    else if (_glFramebufferRenderbufferEXT)  _glFramebufferRenderbufferEXT(target, attachment, renderbuffertarget, renderbuffer);
     else mini3d_assert(false, "OpenGL driver does not support EXT_framebuffer_object");
 }
 
+}
+}
 
 #endif

@@ -4,6 +4,10 @@
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
 #ifdef __APPLE__
+#import "TargetConditionals.h"
+#endif
+
+#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
 
 #include "platform_osx.hpp"
 #include "../../../windowrendertarget.hpp"
@@ -30,7 +34,7 @@ using namespace mini3d::graphics;
 // It will return true if the old internal pixel format was incompatible with the new one (requiring the device context to be recreated).
 // Platforms without limitations on pixel formats will simply always return false.
 
-                    Platform_osx::~Platform_osx()                                     { @autoreleasepool { [context release]; }}
+Platform_osx::~Platform_osx()                                     { @autoreleasepool { [context release]; }}
 
 Platform_osx::Platform_osx()
 {

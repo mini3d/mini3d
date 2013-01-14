@@ -10,27 +10,19 @@
 namespace mini3d {
 namespace graphics {
 
+struct IGraphicsService;
+
 struct IIndexBuffer
 {
-	enum DataType { INT_16 = 0, INT_32 = 1 };
+	enum DataType { INT_16 = 0, INT_32 = 1 }; // Don't change the numbers, they are used as array indices in the implementations
 
+    static IIndexBuffer* New(IGraphicsService* pGraphics, const void* pIndices, unsigned int count, DataType dataType = INT_32);
+    virtual ~IIndexBuffer() {};
 
-#define IINDEXBUFFER_INTERFACE(PURE_VIRTUAL)\
-\
-	virtual void* GetIndices(unsigned int& sizeInBytes) PURE_VIRTUAL; /* TODO: Make Const! */ \
-	virtual void SetIndices(const void* pIndices, unsigned int count, DataType dataType = INT_32) PURE_VIRTUAL;\
-\
-	virtual void* Lock(unsigned int& sizeInBytes, bool readOnly = false) PURE_VIRTUAL;\
-	virtual void Unlock() PURE_VIRTUAL;\
-\
-	virtual unsigned int GetIndexCount() const PURE_VIRTUAL;\
-	virtual DataType GetDataType() const PURE_VIRTUAL;\
+	virtual void SetIndices(const void* pIndices, unsigned int count, DataType dataType = INT_32) = 0;
 
-
-public:
-
-	IINDEXBUFFER_INTERFACE(=0);
-	virtual ~IIndexBuffer() {};
+	virtual unsigned int GetIndexCount() const = 0;
+	virtual DataType GetDataType() const = 0;
 };
 }
 }

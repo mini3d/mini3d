@@ -12,21 +12,15 @@ namespace graphics {
 
 struct IPixelShader;
 struct IVertexShader;
+struct IGraphicsService;
 
 struct IShaderProgram
 {
-
-#define ISHADERPROGRAM_INTERFACE(PURE_VIRTUAL)\
-\
-	virtual IPixelShader* GetPixelShader() const PURE_VIRTUAL;\
-	virtual IVertexShader* GetVertexShader() const PURE_VIRTUAL;\
-
-
-public:
-	
-	ISHADERPROGRAM_INTERFACE(=0);
+    static IShaderProgram* New(IGraphicsService* pGraphics, IVertexShader* pVertexShader, IPixelShader* pPixelShader);
 	virtual ~IShaderProgram() {};
 
+    virtual IPixelShader* GetPixelShader() const = 0;
+	virtual IVertexShader* GetVertexShader() const = 0;
 };
 }
 }

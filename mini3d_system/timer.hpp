@@ -8,7 +8,7 @@
 #include <stdint.h>
 
 namespace mini3d {
-namespace time {
+namespace system {
 
 class Timer
 {

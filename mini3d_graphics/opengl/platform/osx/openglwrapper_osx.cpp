@@ -7,6 +7,9 @@
 
 
 #ifdef __APPLE__
+#import "TargetConditionals.h"
+
+#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
 
 #define GL_GLEXT_FUNCTION_POINTERS 1
 #include <OpenGL/gl.h>
@@ -403,3 +406,5 @@ void OpenGlWrapper::glFramebufferRenderbuffer(GLenum target, GLenum attachment, 
 
 
 #endif
+#endif
+

@@ -4,7 +4,11 @@
 
 // Hex codes from WinUser.h (VK_**)
 
-#if defined(__APPLE__)
+#ifdef __APPLE__
+#import "TargetConditionals.h"
+
+#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+
 
 static const unsigned int MINI3D_UNICODE_PRIVATE_AREA_OFFSET = 0xF0000;
 
@@ -34,4 +38,5 @@ enum UnicodeKeyId {
     UKID_F12        = 0xF70F,
 };
 
+#endif
 #endif

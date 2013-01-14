@@ -3,35 +3,33 @@
 // This file is part of Mini3D <www.mini3d.org>
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
+
 #ifdef __APPLE__
 #import "TargetConditionals.h"
+#endif
 
-#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+#if TARGET_OS_IPHONE
 
-
-#ifndef MINI3D_GRAPHICS_PLATFORM_OSX_H
-#define MINI3D_GRAPHICS_PLATFORM_OSX_H
+#ifndef MINI3D_GRAPHICS_PLATFORM_IOS_H
+#define MINI3D_GRAPHICS_PLATFORM_IOS_H
 
 #include "../iplatform.hpp"
 
 namespace mini3d {
 namespace graphics {
-
-struct Internal;
-	
-typedef class Platform_osx : public IPlatform
+    
+typedef class Platform_ios : public IPlatform
 {
 public:
     IPLATFORM_INTERFACE(;)
 
-    Platform_osx();
-    ~Platform_osx();
-
+    Platform_ios();
+    ~Platform_ios();
+    
 } Platform;
 
 }
 }
 
-#endif
 #endif
 #endif

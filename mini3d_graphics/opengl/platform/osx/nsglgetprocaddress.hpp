@@ -4,6 +4,11 @@
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
 #ifdef __APPLE__
+#import "TargetConditionals.h"
+#endif
+
+#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+
 
 #import <mach-o/dyld.h>
 #import <stdlib.h>

@@ -3,13 +3,14 @@
 // This file is part of Mini3D <www.mini3d.org>
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
-#include "../graphicsservice.hpp"
-
 #ifdef _WIN32
-#ifdef MINI3D_GRAPHICSSERVICE_DIRECTX_9
 
 #ifndef MINI3D_GRAPHICS_DIRECT3D9_H
 #define MINI3D_GRAPHICS_DIRECT3D9_H
+
+#include "../graphicsservice.hpp"
+
+#ifdef MINI3D_GRAPHICSSERVICE_DIRECTX_9
 
 typedef unsigned int uint;
 
@@ -118,8 +119,8 @@ typedef class GraphicsService_Direct3d9 : public IGraphicsService
 public:
 	IGRAPHICSSERVICE_INTERFACE(;)
 
-    ~GraphicsService_Direct3d9();
     GraphicsService_Direct3d9();
+    ~GraphicsService_Direct3d9();
 
     IDirect3DDevice9* GetDevice() { return m_pDevice; };
 	IDirect3D9* GetDirect3D() { return m_pD3D; };

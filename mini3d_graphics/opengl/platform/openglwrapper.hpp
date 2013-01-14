@@ -6,22 +6,28 @@
 #ifndef MINI3D_IOPENGLWRAPPER_H
 #define MINI3D_IOPENGLWRAPPER_H
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <GL/gl.h>
+#include "common/glext.h"
+#endif
+
+/*
 // include a minimal opengl header with only the stuff we need
 #include "win32/opengl_win32.hpp"
 #include "linux/opengl_linux.hpp"
 #include "osx/opengl_osx.hpp"
-
+#include "ios/opengl_ios.hpp"
+#include "android/opengl_android.hpp"
+*/
 
 ///////// OPENGL WRAPPER //////////////////////////////////////////////////////
 
 namespace mini3d {
 namespace graphics {
 
-class OpenGlWrapper
-{
-public:
-    OpenGlWrapper();
-    ~OpenGlWrapper();
+    void initOpenGL();
 
     GLenum glGetError();
 
@@ -134,12 +140,7 @@ public:
     void glDrawElementsInstanced(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices, GLsizei primcount);
     void glVertexAttribDivisor(GLuint index, GLuint divisor);
 
-
-private:
-    struct Internal;
-    Internal* mpI;
-};
 }
 }
 
-#endif // MINI3D_OPENGLWRAPPER_H
+#endif

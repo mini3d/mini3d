@@ -7,23 +7,20 @@
 #ifndef MINI3D_IRENDERTARGET_H
 #define MINI3D_IRENDERTARGET_H
 
-
 namespace mini3d {
 namespace graphics {
 
-class IRenderTarget
-{
-public:
+struct IGraphicsService;
 
-	struct Viewport
-	{
-		unsigned int x;
-		unsigned int y;
-		unsigned int width;
-		unsigned int height;
-	};
+struct IRenderTarget
+{
+    virtual const char* GetType() const = 0;
+    
+    struct Viewport { unsigned int x, y, width, height;	};
 
 	virtual ~IRenderTarget() {};
+
+    // bool GetContents(char* pixelBuffer) // Not implemented yet, will read back buffer data (buffer is buffer of size GetWidth() * GetHeight() * 4 bytes per pixel)
 
 	virtual unsigned int GetWidth() const = 0;
 	virtual unsigned int GetHeight() const = 0;
@@ -32,8 +29,6 @@ public:
 	virtual void SetViewport(Viewport viewport) = 0;
 
 	virtual bool GetDepthTestEnabled() const = 0;
-	virtual void SetDepthTestEnabled(bool isDepthTestEnabled) = 0;
-
 };
 }
 }

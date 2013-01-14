@@ -4,6 +4,8 @@
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
 #ifdef __APPLE__
+#import "TargetConditionals.h"
+#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
 
 #ifndef MINI3D_GRAPHICS_OPENGL_OSX_H
 #define MINI3D_GRAPHICS_OPENGL_OSX_H
@@ -133,5 +135,6 @@ typedef uint32_t GLbitfield;
 
 #define GL_SHADING_LANGUAGE_VERSION       0x8B8C
 
+#endif
 #endif
 #endif

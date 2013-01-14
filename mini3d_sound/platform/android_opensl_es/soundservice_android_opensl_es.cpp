@@ -92,7 +92,7 @@ SoundService_android_opensl_es::SoundService_android_opensl_es(unsigned int chan
     result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_BUFFERQUEUE, &bqPlayerBufferQueue);
     mini3d_assert(SL_RESULT_SUCCESS == result, "Unable to get buffer queue interface");
 
-// will start playing automatically when buffers are queued
+    // will start playing automatically when buffers are queued
     result = (*bqPlayerPlay)->SetPlayState(bqPlayerPlay, SL_PLAYSTATE_PLAYING);
     mini3d_assert(SL_RESULT_SUCCESS == result, "Unable to set play state");
     

@@ -15,29 +15,22 @@ namespace graphics {
 
 struct ICompatibility
 {
-
-#define ICOMPATIBILITY_INTERFACE(PURE_VIRTUAL)\
-\
-	virtual unsigned int	TextureStreamCount() const PURE_VIRTUAL;\
-	virtual unsigned int	MaxTextureSize() const PURE_VIRTUAL;\
-	virtual bool			TextureFormat(IBitmapTexture::Format format) const PURE_VIRTUAL;\
-	virtual bool			RenderTargetTextureFormat(IRenderTargetTexture::Format format) const PURE_VIRTUAL;\
-\
-	virtual const char*		ShaderLanguage() const PURE_VIRTUAL;\
-	virtual const char*		PixelShaderVersion() const PURE_VIRTUAL;\
-	virtual const char*		VertexShaderVersion() const PURE_VIRTUAL;\
-\
-	virtual unsigned int	VertexStreamCount() const PURE_VIRTUAL;\
-\
-	virtual unsigned int	FreeGraphicsMemory() const PURE_VIRTUAL;\
-\
-
-public:
-	ICOMPATIBILITY_INTERFACE(=0);
 	virtual ~ICompatibility() {};
 
+	virtual unsigned int	GetTextureUnitCount() const = 0;
+    virtual unsigned int	MaxTextureSize() const = 0;
+	virtual bool			TextureFormat(IBitmapTexture::Format format) const = 0;
+	virtual bool			RenderTargetTextureFormat(IRenderTargetTexture::Format format) const = 0;
+
+	virtual const char*		ShaderLanguage() const = 0;
+	virtual const char*		PixelShaderVersion() const = 0;
+	virtual const char*		VertexShaderVersion() const = 0;
+
+	virtual unsigned int	VertexStreamCount() const = 0;
+
+	virtual unsigned int	FreeGraphicsMemory() const = 0;
 };
-} // namespace mini3d
+}
 }
 
 #endif

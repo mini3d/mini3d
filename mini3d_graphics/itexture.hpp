@@ -10,9 +10,13 @@
 namespace mini3d {
 namespace graphics {
 
-class ITexture
+struct IGraphicsService;
+
+struct ITexture
 {
-public:
+    virtual const char* GetType() const = 0;
+
+    enum MipMapMode { MIPMAP_NONE, MIPMAP_MANUAL, MIPMAP_AUTOGENERATE};
 
 	struct SamplerSettings
 	{
@@ -23,17 +27,13 @@ public:
 		SampleMode sampleMode;
 	};
 
-	enum MipMapMode {MIPMAP_NONE, MIPMAP_BOX_FILTER};
-
 	virtual ~ITexture(void) {};
 
 	virtual unsigned int GetWidth() const = 0;
 	virtual unsigned int GetHeight() const = 0;
 
 	virtual MipMapMode GetMipMapMode() const = 0;
-	virtual void SetMipMapMode(MipMapMode mipMapMode) = 0;
 
-//	virtual Format GetFormat() const = 0;
 	virtual SamplerSettings GetSamplerSettings() const = 0;
 };
 }

@@ -10,6 +10,7 @@
 namespace mini3d {
 namespace graphics {
 
+struct IGraphicsService;
 
 struct IVertexBuffer
 {
@@ -31,32 +32,24 @@ struct IVertexBuffer
 	};
 
 	enum DataType { DATA_TYPE_FLOAT };
-	enum StreamMode { STREAM_PER_VERTEX, STREAM_PER_INSTANCE };
+	enum StreamMode { STREAM_MODE_VERTEX_DATA, STREAM_MODE_INSTANCE_DATA };
 
-	struct ComponentDescription { const char* name; DataUsage usage; unsigned int usageIndex; DataType type; unsigned int count; };
+	struct VertexAttribute { const char* name; DataUsage usage; unsigned int usageIndex; DataType type; unsigned int count; };
 
+    static IVertexBuffer* New(IGraphicsService* pGraphics, const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes, const VertexAttribute* pAttributes, unsigned int attributeCount, StreamMode streamMode = STREAM_MODE_VERTEX_DATA);
+    virtual ~IVertexBuffer() {};
 
-#define IVERTEXBUFFER_INTERFACE(PURE_VIRTUAL)\
-\
-	virtual void* GetVertices(unsigned int& sizeInBytes) PURE_VIRTUAL; /* TODO: Make Const! */ \
-	virtual void SetVertices(const void* pVertices, unsigned int count, unsigned int vertexSizeInBytes, StreamMode streamMode = STREAM_PER_VERTEX) PURE_VIRTUAL;\
-\
-	virtual void* Lock(unsigned int& sizeInBytes, bool readOnly = false) PURE_VIRTUAL;\
-	virtual void Unlock() PURE_VIRTUAL;\
-\
-	virtual void SetComponentDescriptions(const ComponentDescription* pComponentDescriptions, const unsigned int count) PURE_VIRTUAL;\
-	virtual const ComponentDescription* GetComponentDescriptions(unsigned int &count) const PURE_VIRTUAL;\
-\
-	virtual unsigned int GetVertexCount() const PURE_VIRTUAL;\
-	virtual unsigned int GetVertexSizeInBytes() const PURE_VIRTUAL;\
-	virtual StreamMode GetStreamMode() const PURE_VIRTUAL;\
-	virtual void SetStreamMode(StreamMode streamMode) PURE_VIRTUAL;\
+	virtual void SetVertices(const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes, const VertexAttribute* pAttributes, unsigned int attributeCount, StreamMode streamMode = STREAM_MODE_VERTEX_DATA) = 0;
 
-
-public:
+    virtual unsigned int GetVertexAttributeCount() const = 0;
+	virtual void GetVertexAttributes(VertexAttribute* pAttributes) const = 0;
 	
-	IVERTEXBUFFER_INTERFACE(=0);
-	virtual ~IVertexBuffer() {};
+    virtual unsigned int GetVertexCount() const = 0;
+	virtual unsigned int GetVertexSizeInBytes() const = 0;
+
+    virtual StreamMode GetStreamMode() const = 0;
+	virtual void SetStreamMode(StreamMode streamMode) = 0;
+
 };
 }
 }

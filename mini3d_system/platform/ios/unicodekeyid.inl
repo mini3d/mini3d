@@ -4,7 +4,12 @@
 
 // Hex codes from WinUser.h (VK_**)
 
-#ifdef _WIN32
+#ifdef __APPLE__
+#import "TargetConditionals.h"
+#endif
+
+#if TARGET_OS_IPHONE
+
 
 static const unsigned int MINI3D_UNICODE_PRIVATE_AREA_OFFSET = 0xF0000;
 

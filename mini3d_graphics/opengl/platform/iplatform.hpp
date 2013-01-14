@@ -12,29 +12,37 @@ namespace mini3d {
 namespace graphics {
 
 struct IWindowRenderTarget;
+struct IRenderTarget;
 
 ///////// PLATFORM ////////////////////////////////////////////////////////////
 
 struct IPlatform
 {
-#define IPLATFORM_INTERFACE(PURE_VIRTUAL)\
-\
-    virtual void GetWindowContentSize(MINI3D_WINDOW window, unsigned int &width, unsigned int &height) const PURE_VIRTUAL;\
-\
-    virtual void SetRenderWindow(IWindowRenderTarget* pWindowRenderTarget) PURE_VIRTUAL;\
-    virtual void SwapWindowBuffers(IWindowRenderTarget* pWindowRenderTarget) PURE_VIRTUAL;\
+    static IPlatform* New();
 
+    virtual unsigned int GetNativeSurfaceWidth(void* nativeSurface) const = 0;
+    virtual unsigned int GetNativeSurfaceHeight(void* nativeSurface) const = 0;
+
+    virtual void MakeCurrent(void* nativeSurface) = 0;
+    virtual void SwapWindowBuffers(void* nativeSurface) = 0;
+
+    virtual void* PrepareWindow(void* nativeWindow) = 0; // Returns opaque pointer to nativeSurface object
+    virtual void UnPrepareWindow(void* nativeWindow, void* nativeSurface) = 0;
+    
 public:
-    IPLATFORM_INTERFACE(=0)
     virtual ~IPlatform() {};
+
 };
 
 }
 }
 
 // Include platform specific implementations
+/*
 #include "win32/platform_win32.hpp"
 #include "linux/platform_linux.hpp"
 #include "osx/platform_osx.hpp"
-
+#include "ios/platform_ios.hpp"
+#include "android/platform_android.hpp"
+*/
 #endif // MINI3D_GRAPHICS_IPLATFORM_H

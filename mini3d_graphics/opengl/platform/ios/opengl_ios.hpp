@@ -3,10 +3,14 @@
 // This file is part of Mini3D <www.mini3d.org>
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
-#ifdef _WIN32
+#ifdef __APPLE__
+#import "TargetConditionals.h"
+#endif
 
-#ifndef MINI3D_GRAPHICS_OPENGL_WIN32_H
-#define MINI3D_GRAPHICS_OPENGL_WIN32_H
+#if TARGET_OS_IPHONE
+
+#ifndef MINI3D_GRAPHICS_OPENGL_IOS_H
+#define MINI3D_GRAPHICS_OPENGL_IOS_H
 
 #include <stdint.h>
 #include <cstddef>
@@ -29,7 +33,7 @@ typedef float GLclampf;
 typedef double GLdouble;
 typedef double GLclampd;
 typedef void GLvoid;
-typedef ptrdiff_t GLintptr;
+typedef long GLintptr;
 typedef intptr_t GLsizeiptr;
 typedef uint32_t GLbitfield;
 
@@ -112,7 +116,8 @@ typedef uint32_t GLbitfield;
 #define GL_TEXTURE_COMPARE_FUNC           0x884D
 
 #define GL_DEPTH_COMPONENT                0x1902
-#define GL_DEPTH_COMPONENT24              0x81A6
+#define GL_DEPTH_COMPONENT16              0x81A5
+
 #define GL_DEPTH_ATTACHMENT               0x8D00
 #define GL_COLOR_ATTACHMENT0              0x8CE0
 

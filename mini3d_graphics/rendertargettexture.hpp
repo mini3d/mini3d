@@ -1,5 +1,5 @@
 
-// Copyright (c) <2011> Daniel Peterson
+// Copyright (c) <2011-2012> Daniel Peterson
 // This file is part of Mini3D <www.mini3d.org>
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
@@ -13,34 +13,30 @@
 namespace mini3d {
 namespace graphics {
 
+struct IGraphicsService;
+
 struct IRenderTargetTexture : public IRenderTarget, public ITexture
 {
+    static const char* TYPE;
+    virtual const char* GetType() const { return TYPE; }
 
-	enum Format { FORMAT_RGBA8UI, FORMAT_RGBA16UI, FORMAT_R16I, FORMAT_R32F };
+    enum Format { FORMAT_RGBA8UI, FORMAT_RGBA16UI, FORMAT_R16I, FORMAT_R32F };
 
+	static IRenderTargetTexture* New(IGraphicsService* pGraphics, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled, MipMapMode mipMapCount = MIPMAP_AUTOGENERATE);
+    virtual ~IRenderTargetTexture() {};
+    
+	virtual void SetRenderTargetTexture(unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled, MipMapMode mipMapMode = MIPMAP_AUTOGENERATE) = 0;
 
-#define IRENDERTARGETTEXTURE_INTERFACE(PURE_VIRTUAL)\
-\
-	virtual void SetRenderTargetTexture(unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled, MipMapMode mipMapMode = MIPMAP_NONE) PURE_VIRTUAL;\
-\
-	virtual unsigned int GetWidth() const PURE_VIRTUAL;\
-	virtual unsigned int GetHeight() const PURE_VIRTUAL;\
-	virtual void SetSize(unsigned int width, unsigned int height) PURE_VIRTUAL;\
-	virtual Viewport GetViewport() const PURE_VIRTUAL;\
-	virtual void SetViewport(Viewport viewport) PURE_VIRTUAL;\
-	virtual Format GetFormat() const PURE_VIRTUAL;\
-	virtual bool GetDepthTestEnabled() const PURE_VIRTUAL;\
-	virtual void SetDepthTestEnabled(bool depthTestEnabled) PURE_VIRTUAL;\
-	virtual MipMapMode GetMipMapMode() const PURE_VIRTUAL;\
-	virtual void SetMipMapMode(MipMapMode mipMapMode) PURE_VIRTUAL;\
-	virtual SamplerSettings GetSamplerSettings() const PURE_VIRTUAL;\
+	virtual unsigned int GetWidth() const = 0;
+	virtual unsigned int GetHeight() const = 0;
 
-
-public:
-
-	IRENDERTARGETTEXTURE_INTERFACE(=0);
-	virtual ~IRenderTargetTexture() {};
-
+	virtual Viewport GetViewport() const = 0;
+	virtual void SetViewport(Viewport viewport) = 0;
+	
+    virtual Format GetFormat() const = 0;
+	virtual bool GetDepthTestEnabled() const = 0;
+    virtual SamplerSettings GetSamplerSettings() const = 0;
+    virtual MipMapMode GetMipMapMode() const = 0;
 };
 }
 }

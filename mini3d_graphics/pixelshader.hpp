@@ -10,20 +10,12 @@
 namespace mini3d {
 namespace graphics {
 
+struct IGraphicsService;
+
 struct IPixelShader
 {
-
-
-#define IPIXELSHADER_INTERFACE(PURE_VIRTUAL)\
-\
-	virtual void* GetPixelShader(unsigned int& sizeInBytes) PURE_VIRTUAL;\
-
-
-public:
-
-	IPIXELSHADER_INTERFACE(=0);
-	virtual ~IPixelShader() {};
-
+    static IPixelShader* New(IGraphicsService* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes);
+ 	virtual ~IPixelShader() {};
 };
 }
 }

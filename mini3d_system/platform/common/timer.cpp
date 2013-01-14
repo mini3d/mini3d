@@ -3,43 +3,25 @@
 // This file is part of Mini3D <www.mini3d.org>
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
-#include "timer.h"
+#include "../../timer.hpp"
 
-using namespace mini3d::time;
+using namespace mini3d::system;
 
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <mmsystem.h>
-uint64_t    TimeGetTimeInMicroSeconds()             { return timeGetTime() * 1000; }
-void        Timer::Sleep(uint64_t microSeconds)     { ::Sleep(DWORD(microSeconds / 1000)); }
-#elif __linux__
-#include <sys/time.h>
-#include <unistd.h>
-uint64_t    TimeGetTimeInMicroSeconds()             { timeval t; gettimeofday(&t, NULL); return t.tv_sec * 1000000 + t.tv_usec; }
-void        Timer::Sleep(uint64_t microSeconds)     {usleep(microSeconds); }
-#elif __APPLE__
+#if defined(__linux__) || defined(__APPLE__)
 #include <sys/time.h>
 #include <unistd.h>
 // TODO: Maby not the best way to do it. (Use NSDate and timeIntervalSinceNow?)
 uint64_t    TimeGetTimeInMicroSeconds()             { timeval t; gettimeofday(&t, NULL); return t.tv_sec * 1000000 + t.tv_usec; }
-void        Timer::Sleep(uint64_t microSeconds)     {usleep((useconds_t)microSeconds); }
+void        Timer::Sleep(uint64_t microSeconds)     { usleep((useconds_t)microSeconds); }
+#else
+// For all others it is implemented in the platform source file
+uint64_t    TimeGetTimeInMicroSeconds();
 #endif
 
 
-Timer::Timer() : mState(STOPPED), mTotalPauseTime(0), mPauseTime(0), mStartTime(0)
-{
-#ifdef _WIN32
-	timeBeginPeriod(1);
-#endif
-}
 
-Timer::~Timer()
-{
-#ifdef _WIN32
-	timeEndPeriod(1);
-#endif
-}
+Timer::Timer() : mState(STOPPED), mTotalPauseTime(0), mPauseTime(0), mStartTime(0) { }
+Timer::~Timer() { }
 
 void Timer::Start()
 {
