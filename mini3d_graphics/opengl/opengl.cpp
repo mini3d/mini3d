@@ -186,10 +186,8 @@ private:
     // Vertices
     unsigned int m_vertexCount;
 	unsigned int m_vertexSizeInBytes;
-    unsigned int m_attributeCount;
 
 	GLuint m_glVertexBuffer;
-	int m_bufferSizeInBytes;
 
 	GraphicsService_OpenGL* m_pGraphicsService;
 };
@@ -851,6 +849,8 @@ private:
 
     GraphicsService_OpenGL()
     {
+        m_IsUsingInstancedAttributes = false;
+
         m_pCurrentShaderProgram = 0;
         m_pCurrentWindowRenderTarget = 0;
         m_pCurrentRenderTarget = 0;
@@ -1132,10 +1132,15 @@ private:
         if (m_pCurrentShaderInputLayout == 0)
             return;
 
+        GLenum err;
+
+
         m_pCurrentShaderInputLayout->BindAttributes();
+        err = glGetError();
 
         if (m_pCurrentConstantBuffer != 0)
             m_pCurrentConstantBuffer->ApplyUniforms();
+        err = glGetError();
 
         // Draw the scene
         if (m_IsUsingInstancedAttributes) // && m_pPlatform->VERSION_3_3()) TODO: Move somewhere other than platform
@@ -1147,7 +1152,9 @@ private:
         {
             // TODO: glDrawRangeElements is faster than glDrawElements according to: http://www.spec.org/gwpg/gpc.static/vbo_whitepaper.html
             glDrawElements(GL_TRIANGLES, m_pCurrentIndexBuffer->GetIndexCount(), GL_UNSIGNED_INT, 0);
+            err = glGetError();
         }
+
     }
 
     // Clear
