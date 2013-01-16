@@ -7,8 +7,8 @@
 #define MINI3D_IGRAPHICSSERVICE_H
 
 // Decides what implementation to use for graphcis
-#define MINI3D_GRAPHICSSERVICE_DIRECT3D_11
-//#define MINI3D_GRAPHICSSERVICE_OPENGL
+//#define MINI3D_GRAPHICSSERVICE_DIRECT3D_11
+#define MINI3D_GRAPHICSSERVICE_OPENGL
 
 // TODO: When a resource is set. it should be tested if it needs to be reloaded. if an out of memory error occurs then the resource might still be loadable at a later time, without altering any parameters.
 
@@ -23,9 +23,10 @@ typedef void* MINI3D_WINDOW;
 #include "rendertargettexture.hpp"
 #include "vertexbuffer.hpp"
 #include "indexbuffer.hpp"
+#include "constantbuffer.hpp"
 #include "windowrendertarget.hpp"
 #include "shaderprogram.hpp"
-
+#include "shaderinputlayout.hpp"
 
 namespace mini3d {
 namespace graphics {
@@ -47,18 +48,26 @@ struct IGraphicsService
 
 	virtual IShaderProgram* GetShaderProgram() const = 0;
 	virtual void SetShaderProgram(IShaderProgram* pShaderProgram) = 0;
-	virtual ITexture* GetTexture(unsigned int index) const = 0;
-	virtual void SetTexture(ITexture* pTexture, const char* name) = 0;
-	virtual IRenderTarget* GetRenderTarget() const = 0;
+	
+    virtual ITexture* GetTexture(unsigned int idD3D, const char* nameOGL) const = 0;
+	virtual void SetTexture(ITexture* pTexture, unsigned int idD3D, const char* nameOGL) = 0;
+	
+    virtual IRenderTarget* GetRenderTarget() const = 0;
 	virtual void SetRenderTarget(IRenderTarget* pRenderTarget) = 0;
-	virtual IIndexBuffer* GetIndexBuffer() const = 0;
+	
+    virtual IIndexBuffer* GetIndexBuffer() const = 0;
 	virtual void SetIndexBuffer(IIndexBuffer* indexBuffer) = 0;
+
 	virtual IVertexBuffer* GetVertexBuffer(unsigned int streamIndex) const = 0;
 	virtual void SetVertexBuffer(IVertexBuffer* vertexBuffer, unsigned int streamIndex = 0) = 0;
-
-	virtual void SetShaderParameterFloat(const char* name, const float* pData, unsigned int count) = 0;
-	virtual void SetShaderParameterInt(const char* name, const int* pData, unsigned int count) = 0;
-	virtual void SetShaderParameterMatrix4x4(const char* name, const float* pData) = 0;
+    
+    // Constant buffer name for OpenGL is neede if multiple simultanous buffers are bound even if you are not using
+    // OpenGL Uniform Buffer Objects (OpenGL 3.1)
+    virtual IConstantBuffer* GetConstantBuffer(unsigned int idD3D, const char* nameOGL) = 0;
+    virtual void SetConstantBuffer(IConstantBuffer* pBuffer, unsigned int idD3D, const char* nameOGL) = 0;
+    
+    virtual IShaderInputLayout* GetShaderInputLayout() = 0;
+    virtual void SetShaderInputLayout(IShaderInputLayout* pLayout) = 0;
 
 	virtual void SetCullMode(CullMode cullMode) = 0;
 

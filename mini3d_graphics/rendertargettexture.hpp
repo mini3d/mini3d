@@ -43,4 +43,3 @@ struct IRenderTargetTexture : public IRenderTarget, public ITexture
 
 #endif
 
-

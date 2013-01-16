@@ -21,6 +21,7 @@ struct IShaderProgram
 
     virtual IPixelShader* GetPixelShader() const = 0;
 	virtual IVertexShader* GetVertexShader() const = 0;
+
 };
 }
 }

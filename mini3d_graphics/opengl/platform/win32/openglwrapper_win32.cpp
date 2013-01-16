@@ -57,10 +57,9 @@ PFNGLVALIDATEPROGRAMPROC _glValidateProgram;
 PFNGLGETATTRIBLOCATIONPROC _glGetAttribLocation;
 PFNGLBINDATTRIBLOCATIONPROC _glBindAttribLocation;
 PFNGLGETACTIVEATTRIBPROC _glGetActiveAttrib;
-PFNGLUNIFORM1FPROC _glUniform1f;
-PFNGLUNIFORM2FPROC _glUniform2f;
-PFNGLUNIFORM3FPROC _glUniform3f;
-PFNGLUNIFORM4FPROC _glUniform4f;
+PFNGLUNIFORM1FVPROC _glUniform1fv;
+PFNGLUNIFORM2FVPROC _glUniform2fv;
+PFNGLUNIFORM3FVPROC _glUniform3fv;
 PFNGLUNIFORM4FVPROC _glUniform4fv;
 PFNGLUNIFORM1IPROC _glUniform1i;
 PFNGLUNIFORM2IPROC _glUniform2i;
@@ -144,10 +143,9 @@ void initOpenGL()
     _glGetAttribLocation = (PFNGLGETATTRIBLOCATIONPROC)wglGetProcAddress("glGetAttribLocation");
     _glBindAttribLocation = (PFNGLBINDATTRIBLOCATIONPROC)wglGetProcAddress("glBindAttribLocation");
     _glGetActiveAttrib = (PFNGLGETACTIVEATTRIBPROC)wglGetProcAddress("glGetActiveAttrib");
-    _glUniform1f = (PFNGLUNIFORM1FPROC)wglGetProcAddress("glUniform1f");
-    _glUniform2f = (PFNGLUNIFORM2FPROC)wglGetProcAddress("glUniform2f");
-    _glUniform3f = (PFNGLUNIFORM3FPROC)wglGetProcAddress("glUniform3f");
-    _glUniform4f = (PFNGLUNIFORM4FPROC)wglGetProcAddress("glUniform4f");
+    _glUniform1fv = (PFNGLUNIFORM1FVPROC)wglGetProcAddress("glUniform1fv");
+    _glUniform2fv = (PFNGLUNIFORM2FVPROC)wglGetProcAddress("glUniform2fv");
+    _glUniform3fv = (PFNGLUNIFORM3FVPROC)wglGetProcAddress("glUniform3fv");
     _glUniform4fv = (PFNGLUNIFORM4FVPROC)wglGetProcAddress("glUniform4fv");
     _glUniform1i = (PFNGLUNIFORM1IPROC)wglGetProcAddress("glUniform1i");
     _glUniform2i = (PFNGLUNIFORM2IPROC)wglGetProcAddress("glUniform2i");
@@ -253,10 +251,9 @@ void glValidateProgram(GLuint program) { _glValidateProgram(program); }
 GLint glGetAttribLocation(GLuint program, const GLchar *name) { return _glGetAttribLocation(program, name); }
 void glBindAttribLocation(GLuint program, GLuint index, const GLchar *name) { _glBindAttribLocation(program, index, name); }
 void glGetActiveAttrib(GLuint program, GLuint index, GLsizei bufSize, GLsizei *length, GLint *size, GLenum *type, GLchar *name) { _glGetActiveAttrib(program, index, bufSize, length, size, type, name); }
-void glUniform1f(GLint location, GLfloat v0) { _glUniform1f(location, v0); }
-void glUniform2f(GLint location, GLfloat v0, GLfloat v1) { _glUniform2f(location, v0, v1); }
-void glUniform3f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2) { _glUniform3f(location, v0, v1, v2); }
-void glUniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3) { _glUniform4f(location, v0, v1, v2, v3); }
+void glUniform1fv(GLint location, GLsizei count, const GLfloat *value) { _glUniform1fv(location, count, value); }
+void glUniform2fv(GLint location, GLsizei count, const GLfloat *value) { _glUniform2fv(location, count, value); }
+void glUniform3fv(GLint location, GLsizei count, const GLfloat *value) { _glUniform3fv(location, count, value); }
 void glUniform4fv(GLint location, GLsizei count, const GLfloat *value) { _glUniform4fv(location, count, value); }
 void glUniform1i(GLint location, GLint v0) { _glUniform1i(location, v0); }
 void glUniform2i(GLint location, GLint v0, GLint v1) { _glUniform2i(location, v0, v1); }

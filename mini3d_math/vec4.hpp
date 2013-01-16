@@ -34,10 +34,13 @@ public:
     inline const bool operator == ( const Vec4 &v ) const               { return (v.x==x && v.y==y && v.z == z && v.w == w); }
 	inline const bool operator != ( const Vec4 &v ) const               { return !(*this == v); }
 
+    
+
     inline const Vec4 operator -() const                                { return Vec4(-x, -y, -z, -w); }
 
     inline float operator [](int index) const                           { return *(&x + index); }
 
+    //inline const Vec4& operator = (const Vec4 &v)                       { x = v.x, y = v.y, z = v.z, w = v.w; return *this; }
     inline const Vec4& operator +=(const Vec4 &v)                       { x += v.x, y += v.y, z += v.z, w += v.w; return *this; }
     inline const Vec4& operator -=(const Vec4 &v)                       { x -= v.x, y -= v.y, z -= v.z, w -= v.w; return *this; }
     inline const Vec4& operator *=(const Vec4 &v)                       { x *= v.x, y *= v.y, z *= v.z, w *= v.w; return *this; }
@@ -78,7 +81,6 @@ public:
         return v;
     }
 
-    // TODO: Assignment operator
     // TODO: Near equals
 };
 

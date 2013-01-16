@@ -150,29 +150,18 @@ struct VertexBuffer_OpenGL : IVertexBuffer
 {
     uint GetVertexCount() const                                     { return m_vertexCount; }
     uint GetVertexSizeInBytes() const                               { return m_vertexSizeInBytes; }
-    StreamMode GetStreamMode() const                                { return m_streamMode; }
-    void SetStreamMode(StreamMode streamMode)                       { m_streamMode = streamMode; }
-    unsigned int GetVertexAttributeCount() const                    { return m_attributeCount; }
-    void GetVertexAttributes(VertexAttribute* pAttributes) const    { for (unsigned int i = 0; i < m_attributeCount; ++i) pAttributes[i] = m_pAttributes[i]; }
-    VertexAttribute* GetVertexAttributes(uint &count) const         { count = m_attributeCount; return m_pAttributes; }
-    GLuint GetGLVertexBuffer()                                      { return m_glVertexBuffer; }
-    ~VertexBuffer_OpenGL()                                          { glDeleteBuffers(1, &m_glVertexBuffer); delete m_pAttributes; Unbind(); }
+   GLuint GetGLVertexBuffer()                                       { return m_glVertexBuffer; }
+    ~VertexBuffer_OpenGL()                                          { glDeleteBuffers(1, &m_glVertexBuffer); Unbind(); }
 
-    VertexBuffer_OpenGL(GraphicsService_OpenGL* pGraphics, const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes, const VertexAttribute* pAttributes, unsigned int attributeCount, StreamMode streamMode) :
-        m_pGraphicsService(pGraphics), m_vertexCount(0), m_vertexSizeInBytes(vertexSizeInBytes), m_attributeCount(0), m_pAttributes(0), m_streamMode(streamMode)
+    VertexBuffer_OpenGL(GraphicsService_OpenGL* pGraphics, const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes) :
+        m_pGraphicsService(pGraphics), m_vertexCount(0), m_vertexSizeInBytes(vertexSizeInBytes)
     {
         glGenBuffers(1, &m_glVertexBuffer);
-        SetVertices(pVertices, vertexCount, vertexSizeInBytes, pAttributes, attributeCount, streamMode);
+        SetVertices(pVertices, vertexCount, vertexSizeInBytes);
     }
 
-    void SetVertices(const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes, const VertexAttribute* pAttributes, unsigned int attributeCount, StreamMode streamMode)
+    void SetVertices(const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes)
     {
-        // if vertex attributes are note created or incorrect size, recreate it
-        if (m_pAttributes != 0 || attributeCount != m_attributeCount) 
-        {
-            delete[] m_pAttributes;
-            m_pAttributes = new VertexAttribute[attributeCount];
-        }
 
         Unbind();
 
@@ -182,13 +171,8 @@ struct VertexBuffer_OpenGL : IVertexBuffer
         glBufferData(GL_ARRAY_BUFFER, sizeInBytes, pVertices, GL_STATIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         
-        m_streamMode = streamMode;
         m_vertexSizeInBytes = vertexSizeInBytes;
         m_vertexCount = vertexCount;
-        m_attributeCount = attributeCount;
-        
-        for (unsigned int i = 0; i < attributeCount; ++i) 
-            m_pAttributes[i] = pAttributes[i];
     }
 
     void Unbind()
@@ -203,8 +187,6 @@ private:
     unsigned int m_vertexCount;
 	unsigned int m_vertexSizeInBytes;
     unsigned int m_attributeCount;
-	IVertexBuffer::VertexAttribute* m_pAttributes;
-	IVertexBuffer::StreamMode m_streamMode;
 
 	GLuint m_glVertexBuffer;
 	int m_bufferSizeInBytes;
@@ -241,7 +223,7 @@ private:
 
 struct VertexShader_OpenGL : IVertexShader
 {
-    GLuint GetGLShader() const                  { return m_glShader; }
+    GLuint GetGLShader() const                   { return m_glShader; }
     ~VertexShader_OpenGL()                       { glDeleteShader(m_glShader); }
 
     VertexShader_OpenGL(GraphicsService_OpenGL* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes) : m_pGraphicsService(pGraphics)
@@ -265,11 +247,56 @@ private:
 
 struct ShaderProgram_OpenGL : IShaderProgram
 {
+    struct ActiveAttribute { const char* name; GLint location; GLint size; GLenum type; unsigned int count; }; 
+    struct ActiveUniform   { const char* name; GLint location; GLint size; GLenum type; }; 
 
-    IPixelShader* GetPixelShader() const    { return (IPixelShader*)m_pPixelShader; }
-    IVertexShader* GetVertexShader() const  { return (IVertexShader*)m_pVertexShader; }
-    GLuint GetGLProgram() const             { return m_glProgram; }
-    ~ShaderProgram_OpenGL()                 { glDeleteProgram(m_glProgram); if (m_pGraphicsService->GetShaderProgram() == this) m_pGraphicsService->SetShaderProgram(0); }
+    IPixelShader* GetPixelShader() const                        { return (IPixelShader*)m_pPixelShader; }
+    IVertexShader* GetVertexShader() const                      { return (IVertexShader*)m_pVertexShader; }
+    GLuint GetGLProgram() const                                 { return m_glProgram; }
+    ActiveAttribute* GetActiveAttributes(unsigned int &count)   { count = m_activeAttributeCount; return m_pActiveAttributes; }
+    ActiveUniform* GetActiveUniforms(unsigned int &count)       { count = m_activeAttributeCount; return m_pActiveUniforms; }
+
+    GLenum GetType(GLenum type)
+    {
+        switch (type)
+        {
+            case GL_FLOAT:
+            case GL_FLOAT_VEC2:
+            case GL_FLOAT_VEC3:
+            case GL_FLOAT_VEC4:
+                return GL_FLOAT;
+            case GL_INT:
+            case GL_INT_VEC2:
+            case GL_INT_VEC3:
+            case GL_INT_VEC4:
+                return GL_INT;
+        }
+        
+        mini3d_assert(false, "Unknown active attribute type!");
+        return 0;
+    }
+
+    GLenum GetSize(GLenum type)
+    {
+        switch (type)
+        {
+            case GL_FLOAT:
+            case GL_INT:
+                return 1;
+            case GL_FLOAT_VEC2:
+            case GL_INT_VEC2:
+                return 2;
+            case GL_FLOAT_VEC3:
+            case GL_INT_VEC3:
+                return 3;
+            case GL_FLOAT_VEC4:
+            case GL_INT_VEC4:
+                return 4;
+        }
+        
+        mini3d_assert(false, "Unknown active attribute type!");
+        return 0;
+    }
 
     ShaderProgram_OpenGL(GraphicsService_OpenGL* pGraphics, IVertexShader* pVertexShader, IPixelShader* pPixelShader) : 
         m_pGraphicsService(pGraphics), m_pVertexShader(pVertexShader), m_pPixelShader(pPixelShader)
@@ -282,51 +309,252 @@ struct ShaderProgram_OpenGL : IShaderProgram
         glLinkProgram(m_glProgram);
         glValidateProgram(m_glProgram);
 
-        // TODO: Debug only
-
-        // Get the log output from linking and information on all attributes and uniforms
-        GLsizei length;
-        glGetProgramInfoLog(m_glProgram, LOG_TEXT_MAX_LENGTH, &length, logText);
-        mini3d_assert(length == 0, "Shader program linking log:\n%s\n", logText);
-
-        printf("\nATTRIBUTE INFORMATION: \n");
-        GLint count, maxNameLength, size;
+        // Get a list of all active attributes
+        GLint maxNameLength, size;
         GLenum type;
 
-        glGetProgramiv(m_glProgram, GL_ACTIVE_ATTRIBUTES, &count);
+        glGetProgramiv(m_glProgram, GL_ACTIVE_ATTRIBUTES, &m_activeAttributeCount);
         glGetProgramiv(m_glProgram, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &maxNameLength);
 
         char *name = new char[maxNameLength];
+        m_pActiveAttributes = new ActiveAttribute[m_activeAttributeCount];
 
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < m_activeAttributeCount; i++)
         {
-            *name = 0;
             glGetActiveAttrib(m_glProgram, i, maxNameLength, NULL, &size, &type, name);
-            printf("Type: %d Name: %s Attribute Location: %d\n", type, name, glGetAttribLocation(m_glProgram, name));
+            // TODO: Cleanup, including free of strudp name!
+            ActiveAttribute att = { strdup(name), glGetAttribLocation(m_glProgram, name), GetSize(type), GetType(type) };
+            m_pActiveAttributes[i] = att;
+
+            printf("Attribute Name: %s, Type: %d, Location: %d\n", name, type, glGetAttribLocation(m_glProgram, name));
         }
         delete[] name;
 
-        glGetProgramiv(m_glProgram, GL_ACTIVE_UNIFORMS, &count);
+        // Get a list of all active uniforms
+        glGetProgramiv(m_glProgram, GL_ACTIVE_UNIFORMS, &m_activeUniformCount);
         glGetProgramiv(m_glProgram, GL_ACTIVE_UNIFORM_MAX_LENGTH, &maxNameLength);
 
         name = new char[maxNameLength];
-        for (int i = 0; i < count; i++)
+        m_pActiveUniforms = new ActiveUniform[m_activeUniformCount];
+
+        for (int i = 0; i < m_activeUniformCount; i++)
         {
-            *name = 0;
             glGetActiveUniform(m_glProgram, i, maxNameLength, NULL, &size, &type, name);
-            printf("Type: %d Name: %s Attribute Location: %d\n", type, name, glGetUniformLocation(m_glProgram, name));
+            // TODO: Cleanup, including free of strudp name!
+            ActiveUniform uni = { strdup(name), glGetUniformLocation(m_glProgram, name), size, type };
+            m_pActiveUniforms[i] = uni;
+
+            printf("Uniform Name: %s, Type: %d, Location: %d\n", name, type, glGetUniformLocation(m_glProgram, name));
         }
         delete[] name;
+
+
     }
+
+    ~ShaderProgram_OpenGL() 
+    { 
+        glDeleteProgram(m_glProgram); 
+        
+        if (m_pGraphicsService->GetShaderProgram() == this) 
+            m_pGraphicsService->SetShaderProgram(0); 
+    
+        delete[] m_pActiveAttributes; 
+        delete[] m_pActiveUniforms;
+    }
+
 
 private:
     IPixelShader* m_pPixelShader;
 	IVertexShader* m_pVertexShader;
 	GLuint m_glProgram;
 
-	GraphicsService_OpenGL* m_pGraphicsService;
+    ActiveAttribute* m_pActiveAttributes;
+    GLint m_activeAttributeCount;
+
+    ActiveUniform* m_pActiveUniforms;
+    GLint m_activeUniformCount;
+
+    GraphicsService_OpenGL* m_pGraphicsService;
 };
 
+
+///////// SHADER INPUT LAYOUT //////////////////////////////////////////////////
+
+struct ShaderInputLayout_OpenGL : IShaderInputLayout
+{
+    struct Attribute { GLuint location; GLint size; GLenum type; unsigned int bufferIndex; GLvoid* offsetInBytes; StreamRate rate; }; 
+
+    unsigned int GetInputElementCount() const { return m_attributeCount; };
+    void GetInputAttributes(InputElement* pElements) const { for(unsigned int i = 0; i < m_attributeCount; ++i) pElements[i]= m_pElements[i]; };
+
+    ShaderInputLayout_OpenGL(GraphicsService_OpenGL* pGraphics, IShaderProgram* pShader, InputElement* pElements, unsigned int count)
+    {
+        m_pGraphicsService = pGraphics;
+
+        // Get data for all the elements in the pElements array
+        unsigned int activeCount;
+        ShaderProgram_OpenGL::ActiveAttribute* pActiveAttributes = ((ShaderProgram_OpenGL*)pShader)->GetActiveAttributes(activeCount);
+
+        m_pAttributes = new Attribute[count];
+        m_pElements = new InputElement[count];
+        for (unsigned int i = 0; i < count; ++i)
+        {
+            // TODO: move search to shader program code!
+            for (unsigned int j = 0; j < activeCount; ++j)
+            {
+                if (!strcmp(pElements[i].nameGLSL, pActiveAttributes[j].name))
+                {
+                    Attribute att = { pActiveAttributes[j].location, pActiveAttributes[j].size, pActiveAttributes[j].type, pElements[i].vertexBufferIndex, (GLvoid *)pElements[i].offsetInBytes, pElements[i].rate };
+                    m_pAttributes[i] = att;
+                    break;
+                }
+            }
+            // TODO: error check here if not found!
+
+            m_pElements[i] = pElements[i];
+        }
+        m_attributeCount = count;
+    }
+
+    ~ShaderInputLayout_OpenGL()
+    {
+        delete[] m_pAttributes;
+        delete[] m_pElements;
+    }
+
+    void BindAttributes()
+    {
+        // Bind all shader attributes to vertex buffers
+        VertexBuffer_OpenGL* pVertexBuffer;
+        for (unsigned int i = 0; i < m_attributeCount; ++i)
+        {
+            if (i == 0 || m_pAttributes[i].bufferIndex != m_pAttributes[i-1].bufferIndex)
+            {
+                pVertexBuffer = (VertexBuffer_OpenGL*)m_pGraphicsService->GetVertexBuffer(m_pAttributes[i].bufferIndex);
+                mini3d_assert(pVertexBuffer != 0, "Missing vertex buffer for shader input attributes!"); // TODO: add names
+                glBindBuffer(GL_ARRAY_BUFFER, pVertexBuffer->GetGLVertexBuffer());
+            }
+            
+            glVertexAttribPointer(m_pAttributes[i].location, m_pAttributes[i].size, m_pAttributes[i].type, GL_FALSE, pVertexBuffer->GetVertexSizeInBytes(), m_pAttributes[i].offsetInBytes);
+            glEnableVertexAttribArray(m_pAttributes[i].location);
+            
+            if (false) // Todo: Vertex attrib devisor (opengl 3.3 and higher)
+            {
+                glVertexAttribDivisor(m_pAttributes[i].location, (unsigned int)m_pAttributes[i].rate);
+            }
+        }
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+private:
+
+    Attribute* m_pAttributes;
+    InputElement* m_pElements;
+    unsigned int m_attributeCount;
+
+    GraphicsService_OpenGL* m_pGraphicsService;
+};
+
+
+struct ConstantBuffer_OpenGL : IConstantBuffer
+{
+    struct Uniform { GLint location; GLenum type; GLint size; unsigned int offsetInBytes; };
+
+    IShaderProgram* GetVertexShader() const { return m_pShader; }
+
+    ConstantBuffer_OpenGL(GraphicsService_OpenGL* pGraphics, unsigned int sizeInBytes, IShaderProgram* pShader, const char** names, unsigned int nameCount)
+    {
+        m_pData = new char[sizeInBytes];
+        m_sizeInBytes = sizeInBytes;
+
+        // Get data for all the elements in the pElements array
+        unsigned int activeCount;
+        ShaderProgram_OpenGL::ActiveUniform* pActiveUniforms = ((ShaderProgram_OpenGL*)pShader)->GetActiveUniforms(activeCount);
+
+        unsigned int offset = 0;
+        m_pUniforms = new Uniform[nameCount];
+        for (unsigned int i = 0; i < nameCount; ++i)
+        {
+            // TODO: move search to shader program code!
+            for (unsigned int j = 0; j < activeCount; ++j)
+            {
+                if (!strcmp(names[i], pActiveUniforms[j].name))
+                {
+                    Uniform uni = { pActiveUniforms[j].location, pActiveUniforms[j].type, pActiveUniforms[j].size, offset };
+                    m_pUniforms[i] = uni;
+                    offset += GetUniformSizeInBytes(pActiveUniforms[j].type) * pActiveUniforms[j].size;
+                    break;
+                }
+            }
+            // TODO: error check here if not found!
+        }
+        m_uniformCount = nameCount;
+        m_pShader = pShader;
+    }
+
+    ~ConstantBuffer_OpenGL()
+    {
+        delete[] m_pData;
+        delete[] m_pUniforms;
+    }
+
+    unsigned int GetUniformSizeInBytes(GLenum type)
+    {
+        switch(type)
+        {
+            case GL_INT:
+            case GL_FLOAT: return 4;
+            case GL_INT_VEC2:
+            case GL_FLOAT_VEC2: return 8;
+            case GL_INT_VEC3:
+            case GL_FLOAT_VEC3: return 12;
+            case GL_INT_VEC4:
+            case GL_FLOAT_VEC4: return 16;
+        }
+        mini3d_assert(false, "Unknown Uniform type!");
+        return 0;
+    }
+
+    void SetData(const char* pData)
+    {
+        memcpy(m_pData, pData, m_sizeInBytes);
+    }
+    
+    void ApplyUniforms()
+    {
+        for (unsigned int i = 0; i < m_uniformCount; ++i)
+        {
+            if (m_pUniforms[i].size != 1)
+            {
+                glUniform4fv(m_pUniforms[i].location, m_pUniforms[i].size, (const GLfloat*)(m_pData + m_pUniforms[i].offsetInBytes));
+                continue;
+            }
+
+            switch(m_pUniforms[i].type)
+            {
+                case GL_FLOAT: glUniform1fv(m_pUniforms[i].location, m_pUniforms[i].size, (GLfloat*)(m_pData + m_pUniforms[i].offsetInBytes)); continue;
+                case GL_FLOAT_VEC2: glUniform2fv(m_pUniforms[i].location, m_pUniforms[i].size, (GLfloat*)(m_pData + m_pUniforms[i].offsetInBytes)); continue;
+                case GL_FLOAT_VEC3: glUniform3fv(m_pUniforms[i].location, m_pUniforms[i].size, (GLfloat*)(m_pData + m_pUniforms[i].offsetInBytes)); continue;
+                case GL_FLOAT_VEC4: glUniform4fv(m_pUniforms[i].location, m_pUniforms[i].size, (GLfloat*)(m_pData + m_pUniforms[i].offsetInBytes)); continue;
+                case GL_INT:
+                case GL_INT_VEC2:
+                case GL_INT_VEC3:
+                case GL_INT_VEC4:
+                    continue;
+            }
+        }
+    }
+
+
+private:
+    
+    Uniform* m_pUniforms;
+    unsigned int m_uniformCount;
+
+    IShaderProgram* m_pShader;
+    char* m_pData;
+    unsigned int m_sizeInBytes;
+};
 
 ///////// BITMAP TEXTURE ///////////////////////////////////////////////////////
 
@@ -416,6 +644,7 @@ struct BitmapTexture_OpenGL : IBitmapTexture, Texture_OpenGL
             } break;
         }
 
+        // TODO: Saved here if parital texture update is needed in the future!
         //glTexSubImage2D(GL_TEXTURE_2D, level, 0, 0, mipMapWidth, mipMapHeight, mini3d_BitmapTexture_Formats[m_Format].format, mini3d_BitmapTexture_Formats[m_Format].type, pMipMap);
 
         // Clear the current bound texture
@@ -625,6 +854,8 @@ private:
         m_pCurrentShaderProgram = 0;
         m_pCurrentWindowRenderTarget = 0;
         m_pCurrentRenderTarget = 0;
+        m_pCurrentShaderInputLayout = 0;
+        m_pCurrentConstantBuffer = 0;
 
         m_pPlatform = IPlatform::New();
         initOpenGL();
@@ -680,9 +911,9 @@ private:
 
     // Texture
     // TODO: Should be based on name instead
-    ITexture* GetTexture(unsigned int index) const
+    ITexture* GetTexture(unsigned int idD3D, const char* nameOGL) const
     {
-        mini3d_assert(index <= m_pCompatibility->GetTextureUnitCount(), "Trying to access texture outside valid range!");
+        //mini3d_assert(index <= m_pCompatibility->GetTextureUnitCount(), "Trying to access texture outside valid range!");
         return 0; 
     }
 
@@ -700,19 +931,20 @@ private:
         }
     }
 
-    void SetTexture(ITexture* pTexture, const char* name)
+    void SetTexture(ITexture* pTexture, unsigned int idD3D, const char* nameOGL)
     {
+        GLenum err = glGetError();
         mini3d_assert(m_pCurrentShaderProgram != 0, "Trying to assign a texture to a sampler without having set a shader program!");
 
         // check if this sampler already has a bound texture
         unsigned int i = 0;
-        while (i < m_boundTextureCount && strcmp(m_pTextureBindings[i].name, name) != 0)
+        while (i < m_boundTextureCount && strcmp(m_pTextureBindings[i].name, nameOGL) != 0)
             ++i;
 
         if (i < m_boundTextureCount && m_pTextureBindings[i].pTexture == pTexture)
             return;
 
-        GLint index = glGetUniformLocation(m_pCurrentShaderProgram->GetGLProgram(), name);
+        GLint index = glGetUniformLocation(m_pCurrentShaderProgram->GetGLProgram(), nameOGL);
         mini3d_assert(index != -1, "Trying to assign a texture to a sampler that can not be found in the current shader program!");
 
         if (pTexture == 0)
@@ -758,8 +990,8 @@ private:
 
             // Set the current texture
             m_pTextureBindings[i].pTexture = pTexture;
-            mini3d_assert(strlen(name) <= MAX_TEXTURE_SAMPLER_NAME_LENGTH, "Using a texture sampler name longer than %u characters (MAX_TEXTURE_SAMPLER_NAME_LENGTH)!", MAX_TEXTURE_SAMPLER_NAME_LENGTH);
-            strcpy(m_pTextureBindings[i].name, name);
+            mini3d_assert(strlen(nameOGL) <= MAX_TEXTURE_SAMPLER_NAME_LENGTH, "Using a texture sampler name longer than %u characters (MAX_TEXTURE_SAMPLER_NAME_LENGTH)!", MAX_TEXTURE_SAMPLER_NAME_LENGTH);
+            strcpy(m_pTextureBindings[i].name, nameOGL);
             ++m_boundTextureCount;
         }
 
@@ -841,137 +1073,26 @@ private:
         m_CurrentVertexBufferMap[streamIndex] = pVertexBuffer_OpenGL;
     }
 
-    // Shader Parameters
-    void SetShaderParameterMatrix4x4(const char* name, const float* pData)
+    IConstantBuffer* GetConstantBuffer(unsigned int id, const char* nameOGL)
     {
-        mini3d_assert(m_pCurrentShaderProgram != 0, "Trying to set a Shader Parameter Matrix without having set a Shader Program! Parameter name:%s", name);
-
-        int location = glGetUniformLocation(m_pCurrentShaderProgram->GetGLProgram(), name);
-        mini3d_assert(location != -1, "Trying to ste a Shader Parameter Matrix but the name could not be found in the currently set Shader Program! Parameter name:%s", name);
-
-        // TODO: Fix all of them! Or should the API be different?
-        glUniformMatrix4fv(location, 1, GL_FALSE, pData);
+        // TODO: fix!
+        return m_pCurrentConstantBuffer;
     }
-
-    void SetShaderParameterFloat(const char* name, const float* pData, unsigned int count)
+    
+    void SetConstantBuffer(IConstantBuffer* pBuffer, unsigned int id, const char* nameOGL)
     {
-        mini3d_assert(m_pCurrentShaderProgram != 0, "Trying to set a float Shader Parameter without having set a Shader Program! Parameter name:%s", name);
-
-        int location = glGetUniformLocation(m_pCurrentShaderProgram->GetGLProgram(), name);
-        mini3d_assert(location != -1, "Trying to set a Shader Parameter but the name could not be found in the currently set Shader Program! Parameter name:%s", name);
-
-        if (count == 1)
-            glUniform1f(location, *pData);
-        else if (count == 2)
-            glUniform2f(location, *pData, *(pData + 1));
-        else if (count == 3)
-            glUniform3f(location, *pData, *(pData + 1), *(pData + 2));
-        else if (count == 4)
-            glUniform4f(location, *pData, *(pData + 1), *(pData + 2), *(pData + 3));
-        else
-            glUniform4fv(location, count, pData);
+        // TODO: Make this some sort of map!
+        m_pCurrentConstantBuffer = (ConstantBuffer_OpenGL*)pBuffer;
     }
-
-    void SetShaderParameterInt(const char* name, const int* pData, unsigned int count)
+    
+    IShaderInputLayout* GetShaderInputLayout()
     {
-        mini3d_assert(m_pCurrentShaderProgram != 0, "Trying to set an int Shader Parameter without having set a Shader Program! Parameter name:%s", name);
-
-        int location = glGetUniformLocation(m_pCurrentShaderProgram->GetGLProgram(), name);
-        mini3d_assert(location != -1, "Trying to set an int Shader Parameter but the name could not be found in the currently set Shader Program! Parameter name:%s", name);
-
-        if (count == 1)
-            glUniform1i(location, *pData);
-        else if (count == 2)
-            glUniform2i(location, *pData, *(pData + 1));
-        else if (count == 3)
-            glUniform3i(location, *pData, *(pData + 1), *(pData + 2));
-        else if (count == 4)
-            glUniform4i(location, *pData, *(pData + 1), *(pData + 2), *(pData + 3));
-        else
-            glUniform4iv(location, count, pData);
+        return m_pCurrentShaderInputLayout;
     }
-
-    // Set all vertex attributes for all streams with vertex buffers
-    void UpdateVertexAttributes()
+    
+    void SetShaderInputLayout(IShaderInputLayout* pLayout)
     {
-        bool activeAttributeIndices[MAX_ACTIVE_ATTRIBUTE_INDICES] = {};
-        bool attributeInstancing = false;
-        m_InstanceCount = 1;
-
-        // Loop over all streams
-        for (unsigned int streamIndex = 0; streamIndex < MAX_VERTEX_BUFFER_SLOTS; ++streamIndex)
-        {
-            // Skip empty streams
-            if (m_CurrentVertexBufferMap[streamIndex] == 0)
-                continue;
-        
-            glBindBuffer(GL_ARRAY_BUFFER, m_CurrentVertexBufferMap[streamIndex]->GetGLVertexBuffer());
-
-            GLuint program = m_pCurrentShaderProgram->GetGLProgram();
-
-            unsigned int attributeCount;
-            const IVertexBuffer::VertexAttribute* pAttributes = m_CurrentVertexBufferMap[0]->GetVertexAttributes(attributeCount); 
-
-            unsigned int stride = 0;
-            for(unsigned int i = 0; i < attributeCount; ++i)
-                stride += pAttributes[i].count * 4;
-
-            unsigned int offset = 0;
-            for(unsigned int i = 0; i < attributeCount; ++i)
-            {
-                GLint index = glGetAttribLocation(program, pAttributes[i].name);
-            
-                if (index == -1)
-                {
-                    offset += pAttributes[i].count * 4;
-                    continue; // TODO: Display debug information
-                }
-            
-                GLenum bindingType;
-                switch (pAttributes[i].type) {
-                    case IVertexBuffer::DATA_TYPE_FLOAT:
-                    default:
-                        bindingType = GL_FLOAT;
-                }
-            
-                GLenum size = pAttributes[i].count;
-                glVertexAttribPointer(index, size, bindingType, false, stride, (GLvoid*)offset);
-                glEnableVertexAttribArray(index);
-
-                // Set geometry instancing if requested and supported
-                // TODO: Move somewhere other than platform!
-                //if (m_pPlatform->VERSION_3_3())
-                if (false)
-                {
-                    unsigned int divisor = 0;
-                    switch(m_CurrentVertexBufferMap[streamIndex]->GetStreamMode()) {
-                    case IVertexBuffer::STREAM_MODE_INSTANCE_DATA:
-                            divisor = 1;
-                            attributeInstancing = true;
-                            m_InstanceCount = m_CurrentVertexBufferMap[streamIndex]->GetVertexCount(); // TODO: Error if this is set and then reset to something else!
-                            break;
-                    case IVertexBuffer::STREAM_MODE_VERTEX_DATA:
-                        default:
-                            divisor = 0;
-                    }
-                    glVertexAttribDivisor(index, divisor);
-                }
-                activeAttributeIndices[index] = 1;
-
-                offset += pAttributes[i].count * 4;
-            }
-        }
-
-        m_IsUsingInstancedAttributes = attributeInstancing;
-
-        // Turn off inactive attribute indices
-        for (unsigned int i = 0; i < MAX_ACTIVE_ATTRIBUTE_INDICES; ++i)
-        {
-            if (activeAttributeIndices[i] == false && m_ActiveAttributeIndices[i] == true)
-                glDisableVertexAttribArray(i);
-        
-            m_ActiveAttributeIndices[i] = activeAttributeIndices[i];
-        }
+        m_pCurrentShaderInputLayout = (ShaderInputLayout_OpenGL*)pLayout;
     }
 
     void SetCullMode(CullMode cullMode)
@@ -1002,16 +1123,19 @@ private:
     {
         BeginScene();
 
-        // Only draw if we have an index buffer set
         if(m_pCurrentIndexBuffer == 0)
             return;
 
-        // Only draw if we have a shader program set
         if (m_pCurrentShaderProgram == 0)
             return;
 
-        // Make sure buffers are correctly bound and vertex attributes are correctly set
-        UpdateVertexAttributes();
+        if (m_pCurrentShaderInputLayout == 0)
+            return;
+
+        m_pCurrentShaderInputLayout->BindAttributes();
+
+        if (m_pCurrentConstantBuffer != 0)
+            m_pCurrentConstantBuffer->ApplyUniforms();
 
         // Draw the scene
         if (m_IsUsingInstancedAttributes) // && m_pPlatform->VERSION_3_3()) TODO: Move somewhere other than platform
@@ -1057,6 +1181,8 @@ private:
 	VertexBuffer_OpenGL* m_CurrentVertexBufferMap[MAX_VERTEX_BUFFER_SLOTS];
 	IndexBuffer_OpenGL* m_pCurrentIndexBuffer;
 	ShaderProgram_OpenGL* m_pCurrentShaderProgram;
+    ShaderInputLayout_OpenGL* m_pCurrentShaderInputLayout;
+    ConstantBuffer_OpenGL* m_pCurrentConstantBuffer;
 
     TextureBinding* m_pTextureBindings;
     unsigned int m_boundTextureCount;
@@ -1071,7 +1197,7 @@ private:
 IGraphicsService* IGraphicsService::New() { return new GraphicsService_OpenGL(); }
 
 IIndexBuffer* IIndexBuffer::New(IGraphicsService* pGraphics, const void* pIndices, unsigned int count, DataType dataType) { return new GraphicsService_OpenGL::IndexBuffer_OpenGL((GraphicsService_OpenGL*)pGraphics, pIndices, count, dataType); }
-IVertexBuffer* IVertexBuffer::New(IGraphicsService* pGraphics, const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes, const VertexAttribute* pAttributes, unsigned int attributeCount, StreamMode streamMode) { return new GraphicsService_OpenGL::VertexBuffer_OpenGL((GraphicsService_OpenGL*)pGraphics, pVertices, vertexCount, vertexSizeInBytes, pAttributes, attributeCount, streamMode); }
+IVertexBuffer* IVertexBuffer::New(IGraphicsService* pGraphics, const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes) { return new GraphicsService_OpenGL::VertexBuffer_OpenGL((GraphicsService_OpenGL*)pGraphics, pVertices, vertexCount, vertexSizeInBytes); }
 IPixelShader* IPixelShader::New(IGraphicsService* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes) { return new GraphicsService_OpenGL::PixelShader_OpenGL((GraphicsService_OpenGL*)pGraphics, pShaderBytes, sizeInBytes); }
 IVertexShader* IVertexShader::New(IGraphicsService* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes) { return new GraphicsService_OpenGL::VertexShader_OpenGL((GraphicsService_OpenGL*)pGraphics, pShaderBytes, sizeInBytes); }
 IShaderProgram* IShaderProgram::New(IGraphicsService* pGraphics, IVertexShader* pVertexShader, IPixelShader* pPixelShader) { return new GraphicsService_OpenGL::ShaderProgram_OpenGL((GraphicsService_OpenGL*)pGraphics, pVertexShader, pPixelShader); }
@@ -1080,6 +1206,8 @@ IRenderTargetTexture* IRenderTargetTexture::New(IGraphicsService* pGraphics, uns
 IWindowRenderTarget* IWindowRenderTarget::New(IGraphicsService* pGraphics, void* pNativeWindow, bool depthTestEnabled) { return new GraphicsService_OpenGL::WindowRenderTarget_OpenGL((GraphicsService_OpenGL*)pGraphics, pNativeWindow, depthTestEnabled); }
 IBitmapTexture* IBitmapTexture::New(IGraphicsService* pGraphics, const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, MipMapMode mipMapMode) { return new GraphicsService_OpenGL::BitmapTexture_OpenGL((GraphicsService_OpenGL*) pGraphics, pBitmap, width, height, format, samplerSettings, mipMapMode); }
 
+IConstantBuffer* IConstantBuffer::New(IGraphicsService* pGraphics, unsigned int sizeInBytes, IShaderProgram* pShader, const char** names, unsigned int nameCount) { return new GraphicsService_OpenGL::ConstantBuffer_OpenGL((GraphicsService_OpenGL*)pGraphics, sizeInBytes, pShader, names, nameCount); }
+IShaderInputLayout* IShaderInputLayout::New(IGraphicsService* pGraphics, IShaderProgram* pShader, InputElement* pElements, unsigned int count) { return new GraphicsService_OpenGL::ShaderInputLayout_OpenGL((GraphicsService_OpenGL*)pGraphics, pShader, pElements, count); }
 }
 }
 

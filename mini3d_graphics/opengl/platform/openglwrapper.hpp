@@ -87,10 +87,9 @@ namespace graphics {
     void glBindAttribLocation(GLuint program, GLuint index, const GLchar *name);
     void glGetActiveAttrib(GLuint program, GLuint index, GLsizei bufSize, GLsizei *length, GLint *size, GLenum *type, GLchar *name);
 
-    void glUniform1f(GLint location, GLfloat v0);
-    void glUniform2f(GLint location, GLfloat v0, GLfloat v1);
-    void glUniform3f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2);
-    void glUniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
+    void glUniform1fv(GLint location, GLsizei count, const GLfloat* value);
+    void glUniform2fv(GLint location, GLsizei count, const GLfloat* value);
+    void glUniform3fv(GLint location, GLsizei count, const GLfloat* value);
     void glUniform4fv(GLint location, GLsizei count, const GLfloat* value);
 
     void glUniform1i(GLint location, GLint v0);
