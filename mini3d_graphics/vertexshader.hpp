@@ -13,7 +13,7 @@ struct IGraphicsService;
 
 struct IVertexShader
 {
-    static IVertexShader* New(IGraphicsService* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes);
+    static IVertexShader* New(IGraphicsService* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes, bool precompiled = false);
 	~IVertexShader() {};
 };
 

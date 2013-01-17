@@ -10,7 +10,8 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <d3d11.h>
+//#include <d3d11.h>
+#include <D3Dcompiler.h>
 #include <d3dx11.h>
 #include <dxgi.h>
 #include <cstdio>
@@ -19,12 +20,16 @@ void mini3d_assert(bool expression, const char* text, ...);
 
 typedef unsigned int uint;
 
+// TODO: Remove
+const unsigned int MAX_VERTEX_BUFFER_SLOTS = 32;
+const unsigned int MAX_TEXTURE_BUFFER_SLOTS = 32;
+
 namespace mini3d {
 namespace graphics {
 
 ///////// GRAPHCIS SERVICE /////////////////////////////////////////////////////
 
-typedef class GraphicsService_D3D11 : public IGraphicsService
+class GraphicsService_D3D11 : public IGraphicsService
 {
 public:
 
@@ -65,8 +70,9 @@ public:
         static const unsigned int BYTES_PER_INDEX[] = { 2, 4 }; // Maps to IIndexBuffer::DataType enum
         unsigned int sizeInBytes = BYTES_PER_INDEX[dataType] * count;
 
-        D3D11_BUFFER_DESC desc = { sizeInBytes, D3D11_USAGE_DEFAULT, D3D11_BIND_INDEX_BUFFER, 0, 0, mini3d_IndexBuffer_BytesPerIndex[(unsigned int)dataType] };
-        mini3d_assert(S_OK(pDevice->CreateBuffer(&desc, pIndices, &m_pBuffer)), "Failed to create Direct3D 11 index buffer");
+        D3D11_BUFFER_DESC desc = { sizeInBytes, D3D11_USAGE_DEFAULT, D3D11_BIND_INDEX_BUFFER, 0, 0, 0 };
+        D3D11_SUBRESOURCE_DATA pData = {pIndices}; // TODO: set pitch?
+        mini3d_assert(S_OK == pDevice->CreateBuffer(&desc, &pData, &m_pBuffer), "Failed to create Direct3D 11 index buffer");
     
         m_dataType = dataType;
         m_indexCount = count;
@@ -98,25 +104,18 @@ class VertexBuffer_D3D11 : public IVertexBuffer
 public:
     unsigned int GetVertexCount() const                                     { return m_vertexCount; }
     unsigned int GetVertexSizeInBytes() const                               { return m_vertexSizeInBytes; }
-    StreamMode GetStreamMode() const                                        { return m_streamMode; }
-    void SetStreamMode(StreamMode streamMode)                               { m_streamMode = streamMode; }
-    unsigned int GetVertexAttributeCount() const                            { return m_attributeCount; }
-    void GetVertexAttributes(VertexAttribute* pAttributes) const            { for (unsigned int i = 0; i < m_attributeCount; ++i) pAttributes[i] = m_pAttributes[i]; }
-    const VertexAttribute* GetVertexAttributes(unsigned int &count) const   { count = m_attributeCount; return m_pAttributes; }
     ID3D11Buffer* GetBuffer() const                                         { return m_pBuffer; }
     ~VertexBuffer_D3D11(void)                                               { Unload(); }
 
-    VertexBuffer_D3D11(GraphicsService_D3D11* pGraphicsService, const void* pVertices, unsigned int count, unsigned int vertexSizeInBytes, const VertexAttribute* pAttributes, unsigned int attributeCount, StreamMode streamMode)
+    VertexBuffer_D3D11(GraphicsService_D3D11* pGraphicsService, const void* pVertices, unsigned int count, unsigned int vertexSizeInBytes)
     {
         m_pGraphicsService = pGraphicsService; 
         m_pBuffer = 0;
-        m_pAttributes = 0;
-        m_attributeCount = 0;
 
-        SetVertices(pVertices, count, vertexSizeInBytes, pAttributes, attributeCount, streamMode);
+        SetVertices(pVertices, count, vertexSizeInBytes);
     }
 
-    void SetVertices(const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes, const VertexAttribute* pAttributes, unsigned int attributeCount, StreamMode streamMode)
+    void SetVertices(const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes)
     {
         mini3d_assert(pVertices != 0, "Setting a Vertex Buffer with a NULL data pointer!");
 
@@ -128,28 +127,18 @@ public:
         // If it does not exist, create a new one
         unsigned int sizeInBytes = vertexCount * vertexSizeInBytes;
 
-        D3D11_BUFFER_DESC desc = { sizeInBytes, D3D11_USAGE_DEFAULT, D3D11_BIND_VERTEX_BUFFER, 0, 0, vertexSizeInBytes };
-        mini3d_assert(S_OK(pDevice->CreateBuffer(&desc, pVertices, &m_pBuffer)), "Failed to create Direct3D 11 index buffer");
+        D3D11_BUFFER_DESC desc = { sizeInBytes, D3D11_USAGE_DEFAULT, D3D11_BIND_VERTEX_BUFFER, 0, 0, 0 };
+        D3D11_SUBRESOURCE_DATA pData = {pVertices}; // TODO: set pitch?
+        mini3d_assert(S_OK == pDevice->CreateBuffer(&desc, &pData, &m_pBuffer), "Failed to create Direct3D 11 vertex buffer");
 
         m_vertexCount = vertexCount;
         m_vertexSizeInBytes = vertexSizeInBytes;
-        m_streamMode = streamMode;
-
-        if (m_attributeCount != attributeCount)
-        {
-            delete m_pAttributes;
-            m_pAttributes = new VertexAttribute[attributeCount];
-        }
-
-        for (unsigned int i = 0; i < attributeCount; ++i) 
-                m_pAttributes[i] = pAttributes[i];
-
-        m_attributeCount = attributeCount;
     }
 
     void Unload(void)
     {
         // if this is the currently loaded vertex buffer, release it
+        // TODO: need to check all active slots!
         if (m_pGraphicsService->GetVertexBuffer(0) == this)
             m_pGraphicsService->SetVertexBuffer(0, 0);
 
@@ -160,9 +149,6 @@ public:
 private:
     unsigned int m_vertexSizeInBytes;
     unsigned int m_vertexCount;
-    StreamMode m_streamMode;
-    unsigned int m_attributeCount;
-    const VertexAttribute* m_pAttributes;
     ID3D11Buffer* m_pBuffer;
     GraphicsService_D3D11* m_pGraphicsService;
 };
@@ -171,45 +157,51 @@ private:
 
 ///////// PIXEL SHADER ////////////////////////////////////////////////////////
 
-
 class PixelShader_D3D11 : public IPixelShader
 {
 public:
     ID3D11PixelShader* GetD3D11PixelShader() { return m_pShader; }
 
-
-    PixelShader_D3D11(GraphicsService_D3D11* pGraphicsService, const char* pShaderBytes, unsigned int sizeInBytes)
+    PixelShader_D3D11(GraphicsService_D3D11* pGraphicsService, const char* pShaderBytes, unsigned int sizeInBytes, bool precompiled)
     {
         mini3d_assert(pShaderBytes != 0, "Setting a Pixel Shader with a NULL data pointer!");
 
         m_pGraphicsService = pGraphicsService; 
         ID3D11Device* pDevice = m_pGraphicsService->GetDevice();
 
-        // Get supported vertex shader profile
-        D3D_FEATURE_LEVEL level = pDevice->GetFeatureLevel();
-
-        const char* pProfile;
-        if (level >= D3D_FEATURE_LEVEL_11_0)
-            pProfile = "cs_5_0";
-        else if (level >= D3D_FEATURE_LEVEL_10_0)
-            pProfile = "cs_4_0";
-        else if (level >= D3D_FEATURE_LEVEL_9_2)
-            pProfile = "cs_2_0";
+        if (precompiled)
+            mini3d_assert(S_OK == pDevice->CreatePixelShader(pShaderBytes, sizeInBytes, NULL, &m_pShader), "Failed to create pixel shader!");
         else
-            mini3d_assert(false, "Insufficient shader feature level!");
+        {
+            // Get supported vertex shader profile
+            D3D_FEATURE_LEVEL level = pDevice->GetFeatureLevel();
 
-        // comle the shader source
-        ID3D10Blob* pError;
-        ID3D10Blob* pShaderBlob;
+            const char* pProfile;
+            if (level >= D3D_FEATURE_LEVEL_11_0)
+                pProfile = "ps_5_0";
+            else if (level >= D3D_FEATURE_LEVEL_10_0)
+                pProfile = "ps_4_0";
+            else if (level >= D3D_FEATURE_LEVEL_9_2)
+                pProfile = "ps_2_0";
+            else
+                mini3d_assert(false, "Insufficient shader feature level!");
+
+            // compile the shader source
+            ID3D10Blob* pError;
+            ID3D10Blob* pShaderBlob;
         
-        D3DX11CompileFromMemory(pShaderBytes, sizeInBytes, "shader file", NULL, NULL, "main", pProfile, 0, 0, NULL, &pShaderBlob, &pError, NULL);
+            D3DX11CompileFromMemory(pShaderBytes, sizeInBytes, "pixelshader.hlsl", NULL, NULL, "main", pProfile, D3DCOMPILE_ENABLE_BACKWARDS_COMPATIBILITY, 0, NULL, &pShaderBlob, &pError, NULL);
 
-        mini3d_assert(pError->GetBufferSize() == 0, "Error log when compiling Pixel Shader!\n%s", (char*)pError->GetBufferPointer());
+            // TODO: Fix
+            if (pError != 0)
+            {
+                mini3d_assert(pError->GetBufferSize() < 2, "Error log when compiling Pixel Shader!\n%s", (char*)pError->GetBufferPointer());
+                pError->Release();
+            }
 
-        pError->Release();
-
-        mini3d_assert(S_OK(pDevice->CreatePixelShader(pShaderBlob->GetBufferPointer(), pShaderBlob->GetBufferSize(), NULL, &m_pShader)), "Failed to compile pixel shader!");
-        pShaderBlob->Release();           
+            mini3d_assert(S_OK == pDevice->CreatePixelShader(pShaderBlob->GetBufferPointer(), pShaderBlob->GetBufferSize(), NULL, &m_pShader), "Failed to create pixel shader!");
+            pShaderBlob->Release();
+        }
     }
 
     ~PixelShader_D3D11()
@@ -218,23 +210,11 @@ public:
         if (m_pGraphicsService->GetShaderProgram()->GetPixelShader() == this)
             m_pGraphicsService->SetShaderProgram(0);
 
-//        m_pConstantTable->Release();
         m_pShader->Release();
-    }
-
-    int GetSamplerIndex(const char* name)
-    {
-        /*
-        D3DXHANDLE handle = m_pConstantTable->GetConstantByName(0, name);
-        mini3d_assert(handle != 0, "Trying to query the index for a sampler but the pixel shader does not have any sampler with that name!");
-
-        return m_pConstantTable->GetSamplerIndex(handle);
-        */
     }
 
 private:
     ID3D11PixelShader* m_pShader;
-    //ID3DConstantTable* m_pConstantTable;
     GraphicsService_D3D11* m_pGraphicsService;
 };
 
@@ -244,29 +224,59 @@ private:
 class VertexShader_D3D11 : public IVertexShader
 {
 public:
+    const char* GetShaderBytes()                { return m_pShaderBytes; }
+    SIZE_T GetSizeInBytes()                     { return m_sizeInBytes; }
     ID3D11VertexShader* GetD3D11VertexShader()  { return m_pShader; }
 
-    VertexShader_D3D11(GraphicsService_D3D11* pGraphicsService, const char* pShaderBytes, unsigned int sizeInBytes, InputAttribute* pAttributes, unsigned int attributeCount)
+    VertexShader_D3D11(GraphicsService_D3D11* pGraphicsService, const char* pShaderBytes, unsigned int sizeInBytes, bool precompiled)
     {
         mini3d_assert(pShaderBytes != 0, "Setting a Vertex Shader with a NULL data pointer!");
 
-        m_pGraphicsService = pGraphicsService; 
+        m_pGraphicsService = pGraphicsService;
         ID3D11Device* pDevice = m_pGraphicsService->GetDevice();
 
-        mini3d_assert(S_OK(pDevice->CreateVertexShader(pShaderBytes, sizeInBytes, NULL, &m_pShader)), "Failed to compile pixel shader!");
-        
-        // Create the input layout description
-        D3D11_INPUT_ELEMENT_DESC* pDesc = new D3D11_INPUT_ELEMENT_DESC[attributeCount];
-        for (unsigned int i = 0; i < attributeCount; ++i)
+        if (precompiled)
         {
-            
+            mini3d_assert(S_OK == pDevice->CreateVertexShader(pShaderBytes, sizeInBytes, NULL, &m_pShader), "Failed to create vertex shader!");
+            m_pShaderBytes = new char[sizeInBytes];
+            memcpy(m_pShaderBytes, pShaderBytes, sizeInBytes);
+            m_sizeInBytes = sizeInBytes;
         }
+        else
+        {
+            // Get supported vertex shader profile
+            D3D_FEATURE_LEVEL level = pDevice->GetFeatureLevel();
 
-        pDevice->CreateInputLayout(, attributeCount, 
-        m_pInputLayout = ID3d11CreateINputLayouyt
+            const char* pProfile;
+            if (level >= D3D_FEATURE_LEVEL_11_0)
+                pProfile = "vs_5_0";
+            else if (level >= D3D_FEATURE_LEVEL_10_0)
+                pProfile = "vs_4_0";
+            else if (level >= D3D_FEATURE_LEVEL_9_2)
+                pProfile = "vs_2_0";
+            else
+                mini3d_assert(false, "Insufficient shader feature level!");
+
+            // compile the shader source
+            ID3D10Blob* pError;
+            ID3D10Blob* pShaderBlob;
         
-        delete[] pDesc;
-        pShaderBlob->Release();
+            D3DX11CompileFromMemory(pShaderBytes, sizeInBytes, "vertexshader.hlsl", NULL, NULL, "main", pProfile, D3DCOMPILE_ENABLE_BACKWARDS_COMPATIBILITY, 0, NULL, &pShaderBlob, &pError, NULL);
+
+            // TODO: Fix
+            if (pError != 0)
+            {
+                mini3d_assert(pError->GetBufferSize() < 2, "Error log when compiling vertex shader!\n%s", (char*)pError->GetBufferPointer());
+                pError->Release();
+            }
+
+            mini3d_assert(S_OK == pDevice->CreateVertexShader(pShaderBlob->GetBufferPointer(), pShaderBlob->GetBufferSize(), NULL, &m_pShader), "Failed to create vertex shader!");
+
+            m_pShaderBytes = new char[pShaderBlob->GetBufferSize()];
+            memcpy(m_pShaderBytes, pShaderBlob->GetBufferPointer(), pShaderBlob->GetBufferSize());
+            m_sizeInBytes = pShaderBlob->GetBufferSize();
+            pShaderBlob->Release();
+        }
     }
 
     ~VertexShader_D3D11()
@@ -277,39 +287,13 @@ public:
 
         //m_pConstantTable->Release();
         m_pShader->Release();
+        delete[] m_pShaderBytes;
     }
 
-    void SetConstantFloatArray(const char* name, const float* values, const unsigned int count)
-    {
-        /*
-        mini3d_assert(m_pConstantTable != 0, "Trying to set a float array on a vertex shader with no constant table!");
-    
-        D3DXHANDLE handle = m_pConstantTable->GetConstantByName(0, name);
-        mini3d_assert(handle != 0, "Trying to query the handle for a constant but the vertex shader does not have any constant with that name!");
-
-        D3DXCONSTANT_DESC desc;
-        UINT cc = 1;
-        m_pConstantTable->GetConstantDesc(handle, &desc, &cc);
-
-        HRESULT result = m_pConstantTable->SetFloatArray(m_pGraphicsService->GetDevice(), handle, values, count);
-        */
-    };
-
-    void SetConstantIntArray(const char* name, const int* values, const unsigned int count)
-    {
-        /*
-        mini3d_assert(m_pConstantTable != 0, "Trying to set an integer array on a vertex shader with no constant table!");
-        
-        D3DXHANDLE handle = m_pConstantTable->GetConstantByName(0, name);
-        mini3d_assert(handle != 0, "Trying to query the handle for a constant but the vertex shader does not have any constant with that name!");
-
-        m_pConstantTable->SetIntArray(m_pGraphicsService->GetDevice(), handle, values, count);
-        */
-    };
-
 private:
+    char* m_pShaderBytes;
     ID3D11VertexShader* m_pShader;
-    ID3D11InputLayout* m_pInputLayout;
+    unsigned int m_sizeInBytes;
     GraphicsService_D3D11* m_pGraphicsService;
 };
 
@@ -337,6 +321,98 @@ private:
     GraphicsService_D3D11* m_pGraphicsService;
 };
 
+///////// SHADER INPUT LAYOUT //////////////////////////////////////////////////
+
+struct ShaderInputLayout_D3D11 : IShaderInputLayout
+{
+    unsigned int GetInputElementCount() const               { return m_elementCount; }
+    ID3D11InputLayout* GetLayout() const                    { return m_pLayout; }
+
+    void GetInputElements(InputElement* pElements) const    { for(unsigned int i = 0; i < m_elementCount; ++i) pElements[i] = m_pElements[i]; };
+
+    ShaderInputLayout_D3D11(GraphicsService_D3D11* pGraphics, IShaderProgram* pShader, InputElement* pElements, unsigned int count)
+    {
+        m_pGraphicsService = pGraphics;
+        ID3D11Device* pDevice = pGraphics->GetDevice();
+        VertexShader_D3D11* pD3DShader = (VertexShader_D3D11*)pShader->GetVertexShader();
+
+        static const DXGI_FORMAT DATA_TYPE_DXGI[] = { DXGI_FORMAT_R32_FLOAT, DXGI_FORMAT_R32G32_FLOAT, DXGI_FORMAT_R32G32B32_FLOAT, DXGI_FORMAT_R32G32B32A32_FLOAT };
+
+        m_pElements = new InputElement[count];
+        D3D11_INPUT_ELEMENT_DESC* pDesc = new D3D11_INPUT_ELEMENT_DESC[count];
+        for (unsigned int i = 0; i < count; ++i)
+        {
+            InputElement* pE = pElements + i;
+            D3D11_INPUT_ELEMENT_DESC desc = { pE->semanticHLSL, pE->semanticIndexHLSL, DATA_TYPE_DXGI[pE->type], pE->vertexBufferIndex, pE->offsetInBytes, (D3D11_INPUT_CLASSIFICATION)pE->rate, pE->rate };
+            pDesc[i] = desc;
+            m_pElements[i] = pElements[i];
+        }
+
+        mini3d_assert(S_OK == pDevice->CreateInputLayout(pDesc, count, pD3DShader->GetShaderBytes(), pD3DShader->GetSizeInBytes(), &m_pLayout), "Failed to create input layout!");
+        delete[] pDesc;
+        
+        m_elementCount = count;
+    }
+
+    ~ShaderInputLayout_D3D11()
+    {
+        delete[] m_pElements;
+    }
+
+private:
+
+    ID3D11InputLayout* m_pLayout;
+    InputElement* m_pElements;
+    unsigned int m_elementCount;
+
+    GraphicsService_D3D11* m_pGraphicsService;
+};
+
+
+struct ConstantBuffer_D3D11 : IConstantBuffer
+{
+    IShaderProgram* GetVertexShader() const { return m_pShader; }
+    ID3D11Buffer* GetBuffer()               { return m_pBuffer; };
+
+    ConstantBuffer_D3D11(GraphicsService_D3D11* pGraphics, unsigned int sizeInBytes, IShaderProgram* pShader, const char** names, unsigned int nameCount)
+    {
+        m_pGraphicsService = pGraphics;
+
+        ID3D11Device* pDevice = pGraphics->GetDevice();
+
+        unsigned int alignedSize = ((sizeInBytes >> 4) << 4) + 0x10; // size must be in even 16 bytes;
+
+        D3D11_BUFFER_DESC desc = { alignedSize, D3D11_USAGE_DYNAMIC, D3D11_BIND_CONSTANT_BUFFER, D3D11_CPU_ACCESS_WRITE };
+        mini3d_assert(S_OK == pDevice->CreateBuffer(&desc, NULL, &m_pBuffer), "Failed to create constants buffer");
+
+        m_sizeInBytes = sizeInBytes;
+        m_pShader = pShader;
+    }
+
+    ~ConstantBuffer_D3D11() 
+    { 
+        m_pBuffer->Release();
+    }
+
+    void SetData(const char* pData)
+    {
+        ID3D11DeviceContext* pContext = m_pGraphicsService->GetContext();
+
+        D3D11_MAPPED_SUBRESOURCE resource;
+        mini3d_assert(S_OK == pContext->Map(m_pBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &resource), "Failed to map constant buffer!");
+        memcpy(resource.pData, pData, m_sizeInBytes);
+        pContext->Unmap(m_pBuffer, 0);
+    }
+
+private:
+    
+    IShaderProgram* m_pShader;
+    ID3D11Buffer* m_pBuffer;
+    unsigned int m_sizeInBytes;
+
+    GraphicsService_D3D11* m_pGraphicsService;
+};
+
 
 ///////// BITMAP TEXTURE ///////////////////////////////////////////////////////
 
@@ -344,17 +420,20 @@ class BitmapTexture_D3D11 : public IBitmapTexture
 {
 public:
 
-unsigned int GetWidth() const               { return m_width; };
-unsigned int GetHeight() const              { return m_height; };
-MipMapMode GetMipMapMode() const            { return m_mipMapMode; };
-Format GetFormat() const                    { return m_format; };
-SamplerSettings GetSamplerSettings() const  { return m_samplerSettings; };
- ~BitmapTexture_D3D11()                     { Unload();  }
+unsigned int GetWidth() const                           { return m_width; }
+unsigned int GetHeight() const                          { return m_height; }
+MipMapMode GetMipMapMode() const                        { return m_mipMapMode; }
+Format GetFormat() const                                { return m_format; }
+SamplerSettings GetSamplerSettings() const              { return m_samplerSettings; }
+ID3D11SamplerState* GetSamplerState() const             { return m_pSamplerState; }
+ID3D11ShaderResourceView* GetShaderResourceView() const { return m_pShaderResourceView; }
+~BitmapTexture_D3D11()                                  { Unload(); }
 
-BitmapTexture_D3D11(GraphicsService_D3D11* pGraphicsService, const void* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, MipMapMode mipMapMode)
+BitmapTexture_D3D11(GraphicsService_D3D11* pGraphicsService, const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, MipMapMode mipMapMode)
 {
     m_pGraphicsService = pGraphicsService; 
     m_pTexture = 0;
+    m_pSamplerState = 0;
     
     SetBitmap(pBitmap, width, height, format, samplerSettings, mipMapMode);
 }
@@ -368,14 +447,14 @@ unsigned int GetLevelCount(unsigned int width, unsigned int height)
     while (mipMapWidth > 1 || mipMapHeight > 1)
     {
         ++level;
-        mipMapWidth >> 1;
-        mipMapHeight >> 1;
+        mipMapWidth >>= 1;
+        mipMapHeight >>= 1;
     }
     
     return level;
 }
 
-void SetBitmap(const void* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, MipMapMode mipMapMode)
+void SetBitmap(const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, MipMapMode mipMapMode)
 {
     mini3d_assert(pBitmap != 0, "Setting a Bitmap Texture with a NULL data pointer!");
     mini3d_assert((width & (width - 1)) == 0, "Setting a Bitmap Texture to a non power of two width!");
@@ -384,16 +463,19 @@ void SetBitmap(const void* pBitmap, unsigned int width, unsigned int height, For
     mini3d_assert(height >= 64, "Setting a Bitmap Texture to a width less than 64!");
 
     ID3D11Device* pDevice = m_pGraphicsService->GetDevice();
+    ID3D11DeviceContext* pContext = m_pGraphicsService->GetContext();
 
     Unload();
 
+    // Create the texture
     static const DXGI_FORMAT DXGI_FORMATS[] = { DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R16G16B16A16_UNORM, DXGI_FORMAT_R16_UNORM, DXGI_FORMAT_R32_FLOAT };
     static const UINT BYTES_PER_PIXEL[] = { 4, 8, 2, 4 };
 
+    unsigned int levelCount = GetLevelCount(width, height);
+
     if (mipMapMode == MIPMAP_MANUAL)
     {
-        int levelCount = GetLevelCount(width, height);
-        D3D11_TEXTURE2D_DESC desc = { width, height, 1, levelCount, DXGI_FORMATS[(unsigned int)format], {1}, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0 };
+        D3D11_TEXTURE2D_DESC desc = { width, height, levelCount, 1, DXGI_FORMATS[(unsigned int)format], {1}, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0 };
         D3D11_SUBRESOURCE_DATA* pResourceData = new D3D11_SUBRESOURCE_DATA[levelCount];
 
         unsigned int mipMapWidth = width;
@@ -412,22 +494,41 @@ void SetBitmap(const void* pBitmap, unsigned int width, unsigned int height, For
             mipMapHeight >>= 1;
         }
 
-        mini3d_assert(S_OK(pDevice->CreateTexture2D(&desc, pResourceData, &m_pTexture)), "Creating Direct3D 11 texture failed!");
+        mini3d_assert(S_OK == pDevice->CreateTexture2D(&desc, pResourceData, &m_pTexture), "Creating Direct3D 11 texture failed!");
         delete pResourceData;
     }
-    else
+    else if (mipMapMode == MIPMAP_NONE)
     {
-        int levelCount = (mipMapMode != MIPMAP_NONE) ? 0 : 1;
-        D3D11_TEXTURE2D_DESC desc = { width, height, levelCount, 1, DXGI_FORMATS[(unsigned int)format], {1}, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0 };
+        levelCount = 1;
+        D3D11_TEXTURE2D_DESC desc = { width, height, 1, 1, DXGI_FORMATS[(unsigned int)format], {1}, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0 };
         D3D11_SUBRESOURCE_DATA resourceData = {pBitmap, width * BYTES_PER_PIXEL[(unsigned int)format], 0 };
-        mini3d_assert(S_OK(pDevice->CreateTexture2D(&desc, &resourceData, &m_pTexture)), "Creating Direct3D 11 texture failed!");
+        mini3d_assert(S_OK == pDevice->CreateTexture2D(&desc, &resourceData, &m_pTexture), "Creating Direct3D 11 texture failed!");
+    }
+    else // mipMapMode == MIPMAP_AUTOGENERATE
+    {
+        D3D11_TEXTURE2D_DESC desc = { width, height, 1, 1, DXGI_FORMATS[(unsigned int)format], {1}, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0 };
+        //D3D11_SUBRESOURCE_DATA data = {pBitmap, width * BYTES_PER_PIXEL[(unsigned int)format], 0};
+        mini3d_assert(S_OK == pDevice->CreateTexture2D(&desc, NULL, &m_pTexture), "Creating Direct3D 11 texture failed!");
+
+        pContext->UpdateSubresource(m_pTexture, 0, NULL, pBitmap, width * BYTES_PER_PIXEL[(unsigned int)format], 0);
     }
 
-    D3D11_TEXTURE2D_DESC desc;
-    m_pTexture->GetDesc(&desc);
+    D3D11_SHADER_RESOURCE_VIEW_DESC rDesc = { DXGI_FORMATS[(unsigned int)format], D3D_SRV_DIMENSION_TEXTURE2D, { 0, 1 }}; //levelCount - 1
+    mini3d_assert(S_OK ==pDevice->CreateShaderResourceView(m_pTexture, &rDesc, &m_pShaderResourceView), "Creating Direct3D 11 Texture Shader Resource View failed!");
 
-    D3D11_SHADER_RESOURCE_VIEW_DESC rDesc = { desc.Format, D3D_SRV_DIMENSION_TEXTURE2D, { desc.MipLevels, desc.MipLevels -1 }};
-    mini3d_assert(S_OK(pDevice->CreateShaderResourceView(m_pTexture, &rDesc, &m_pShaderResourceView)), "Creating Direct3D 11 Texture Shader Resource View failed!");
+    if (mipMapMode == MIPMAP_AUTOGENERATE)
+        pContext->GenerateMips(m_pShaderResourceView);
+
+    // Set sampler state
+    if (m_pSamplerState != 0)
+        m_pSamplerState->Release();
+    
+    static const D3D11_TEXTURE_ADDRESS_MODE ADRESS_MODE_MAP[] = { D3D11_TEXTURE_ADDRESS_CLAMP, D3D11_TEXTURE_ADDRESS_WRAP };
+    static const D3D11_FILTER FILTER_MODE_MAP[] = { D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_FILTER_MIN_MAG_MIP_LINEAR };
+
+    D3D11_TEXTURE_ADDRESS_MODE adressMode = ADRESS_MODE_MAP[(unsigned int)samplerSettings.wrapMode];
+    D3D11_SAMPLER_DESC sampDesc = { FILTER_MODE_MAP[(unsigned int)samplerSettings.sampleMode], adressMode, adressMode, adressMode, 0, 1, D3D11_COMPARISON_LESS, {0}, 0, D3D11_FLOAT32_MAX };
+    mini3d_assert(S_OK == pDevice->CreateSamplerState(&sampDesc, &m_pSamplerState), "Error creating sampler state!");
 
     m_format = format;
     m_samplerSettings = samplerSettings;
@@ -440,12 +541,15 @@ void SetBitmap(const void* pBitmap, unsigned int width, unsigned int height, For
 void Unload()
 {
     // if we are removing one of the current textures, clear that texture slot first
-    for(unsigned int i = 0; i < m_pGraphicsService->m_pCompatibility->TextureStreamCount(); i++)
-        if (m_pGraphicsService->GetTexture(i) == this)
-            m_pGraphicsService->SetTexture(0, i, false);
+    for(unsigned int i = 0; i < m_pGraphicsService->m_pCompatibility->GetTextureUnitCount(); i++)
+        if (m_pGraphicsService->GetTexture(i, "") == this)
+            m_pGraphicsService->SetTexture(0, i, 0);
 
-    m_pTexture->Release();
-    m_pTexture = 0;
+    if (m_pTexture != 0)
+    {
+        m_pTexture->Release();
+        m_pTexture = 0;
+    }
 }
 
 private:
@@ -457,6 +561,7 @@ private:
 
 	ID3D11Texture2D* m_pTexture;
     ID3D11ShaderResourceView* m_pShaderResourceView;
+    ID3D11SamplerState* m_pSamplerState;
 
 	GraphicsService_D3D11* m_pGraphicsService;
 };
@@ -468,23 +573,34 @@ class RenderTargetTexture_D3D11 : public IRenderTargetTexture
 {
 public:
 
-    unsigned int GetWidth() const               { return m_width; }
-    unsigned int GetHeight() const              { return m_height; }
-    Viewport GetViewport() const                { Viewport v = {0,0,0,0}; return v; } // TODO: This should do something
-    void SetViewport(Viewport viewport)         { } // TODO: This should do something
+    unsigned int GetWidth() const                           { return m_width; }
+    unsigned int GetHeight() const                          { return m_height; }
+    Viewport GetViewport() const                            { Viewport v = {0,0,0,0}; return v; } // TODO: This should do something
+    void SetViewport(Viewport viewport)                     { } // TODO: This should do something
 
-    MipMapMode GetMipMapMode() const            { return m_mipMapMode; }
-    Format GetFormat() const                    { return m_format; }
-    SamplerSettings GetSamplerSettings() const  { return m_samplerSettings; }
-    bool GetDepthTestEnabled() const            { return m_depthTestEnabled; }
-    ~RenderTargetTexture_D3D11()                { Unload(); }
+    SamplerSettings GetSamplerSettings() const              { return m_samplerSettings; }
+    MipMapMode GetMipMapMode() const                        { return m_mipMapMode; }
+    Format GetFormat() const                                { return m_format; }
+    bool GetDepthTestEnabled() const                        { return m_depthTestEnabled; }
+    ID3D11ShaderResourceView* GetShaderResourceView() const { return m_pShaderResourceView; }
+    ID3D11SamplerState* GetSamplerState() const             { return m_pSamplerState; }
+
+    ID3D11RenderTargetView* GetRenderTargetView() const     { return m_pView; }
+    ID3D11DepthStencilView* GetDepthStencilView() const     { return m_pDepthStencilView; }
+
+    D3D11_VIEWPORT GetViewportD3D11()                       { return m_viewportD3D11; }
+
+    ~RenderTargetTexture_D3D11()                            { Unload(); }
 
     RenderTargetTexture_D3D11(GraphicsService_D3D11* pGraphicsService, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled, MipMapMode mipMapMode)
     {
         m_pGraphicsService = pGraphicsService; 
         m_pTexture = 0;
         m_pView = 0;
+        m_pDepthStencilTexture = 0;
+        m_pDepthStencilView = 0;
         m_pShaderResourceView = 0;
+        m_pSamplerState = 0;
 
         SetRenderTargetTexture(width, height, format, samplerSettings, depthTestEnabled, mipMapMode);
     }
@@ -497,19 +613,78 @@ public:
         mini3d_assert(height >= 64, "Setting a Bitmap Texture to a width less than 64!");
         mini3d_assert(mipMapMode != MIPMAP_MANUAL, "Manual mip-map mode is not available for render target textures!");
 
+        // TODO: Safe release and null!
+        if (m_pTexture != 0)
+        {
+            m_pTexture->Release();
+            m_pTexture = 0;
+        }
+
+        if (m_pView != 0)
+        {
+            m_pView->Release();
+            m_pView = 0;
+        }
+        
+        if (m_pDepthStencilTexture != 0)
+        {
+            m_pDepthStencilTexture->Release();
+            m_pDepthStencilTexture = 0;
+        }
+
+        if (m_pDepthStencilView != 0)
+        {
+            m_pDepthStencilView->Release();
+            m_pDepthStencilView = 0;
+        }
+
+        if (m_pShaderResourceView != 0)
+        {
+            m_pShaderResourceView->Release();
+            m_pShaderResourceView = 0;
+        }
+
         ID3D11Device* pDevice = m_pGraphicsService->GetDevice();
 
         static const DXGI_FORMAT DXGI_FORMATS[] = { DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R16G16B16A16_UNORM, DXGI_FORMAT_R16_UNORM, DXGI_FORMAT_R32_FLOAT };
 
         UINT levelCount = (mipMapMode != MIPMAP_NONE) ? 0 : 1;
         D3D11_TEXTURE2D_DESC textureDesc = { width, height, levelCount, 1, DXGI_FORMATS[(unsigned int)format], {1}, D3D11_USAGE_DEFAULT, D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE, 0, D3D11_RESOURCE_MISC_GENERATE_MIPS };
-        mini3d_assert(S_OK(pDevice->CreateTexture2D(&textureDesc, NULL, &m_pTexture)), "Creating Direct3D 11 render target texture failed!");
+        mini3d_assert(S_OK == pDevice->CreateTexture2D(&textureDesc, NULL, &m_pTexture), "Creating Direct3D 11 render target texture failed!");
 
         D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc = { textureDesc.Format, D3D11_RTV_DIMENSION_TEXTURE2D }; // Texture2D.MipSlice will be zero initialized
-  	    mini3d_assert(S_OK(pDevice->CreateRenderTargetView(m_pTexture, &renderTargetViewDesc, &m_pView)), "Creating Direct3D 11 render target view failed!"); // TODO: desc can be null?
+  	    mini3d_assert(S_OK == pDevice->CreateRenderTargetView(m_pTexture, &renderTargetViewDesc, &m_pView), "Creating Direct3D 11 render target view failed!"); // TODO: desc can be null?
 
-        D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc = { textureDesc.Format, D3D11_SRV_DIMENSION_TEXTURE2D, { 0, 1 }};
-	    mini3d_assert(S_OK(pDevice->CreateShaderResourceView(m_pTexture, &shaderResourceViewDesc, &m_pShaderResourceView)), "Creating Direct3D 11 Render Target Texture Shader Resource View failed!");
+        D3D11_TEXTURE2D_DESC desc;
+        m_pTexture->GetDesc(&desc);
+
+        D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc = { textureDesc.Format, D3D11_SRV_DIMENSION_TEXTURE2D, { 0, desc.MipLevels }};
+	    mini3d_assert(S_OK == pDevice->CreateShaderResourceView(m_pTexture, &shaderResourceViewDesc, &m_pShaderResourceView), "Creating Direct3D 11 Render Target Texture Shader Resource View failed!");
+
+        if (m_depthTestEnabled)
+        {
+            ID3D11Device* pDevice = m_pGraphicsService->GetDevice();
+            D3D11_TEXTURE2D_DESC desc = { width, height, 1, 1, DXGI_FORMAT_D24_UNORM_S8_UINT, {1}, D3D11_USAGE_DEFAULT, D3D11_BIND_DEPTH_STENCIL };
+            mini3d_assert(S_OK == pDevice->CreateTexture2D(&desc, NULL, &m_pDepthStencilTexture), "Unable to create depth stencil texture!");
+            
+            D3D11_DEPTH_STENCIL_VIEW_DESC viewDesc = { DXGI_FORMAT_D24_UNORM_S8_UINT, D3D11_DSV_DIMENSION_TEXTURE2D }; // Texture2D.MipSlice will be zero initialized
+            mini3d_assert(S_OK == pDevice->CreateDepthStencilView(m_pDepthStencilTexture, &viewDesc, &m_pDepthStencilView), "Unable to create depth stencil view!");
+        }
+
+
+        // Set sampler state
+        if (m_pSamplerState != 0)
+            m_pSamplerState->Release();
+    
+        static const D3D11_TEXTURE_ADDRESS_MODE ADRESS_MODE_MAP[] = { D3D11_TEXTURE_ADDRESS_CLAMP, D3D11_TEXTURE_ADDRESS_WRAP };
+        static const D3D11_FILTER FILTER_MODE_MAP[] = { D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_FILTER_MIN_MAG_MIP_LINEAR };
+
+        D3D11_TEXTURE_ADDRESS_MODE adressMode = ADRESS_MODE_MAP[(unsigned int)samplerSettings.wrapMode];
+        D3D11_SAMPLER_DESC sampDesc = { FILTER_MODE_MAP[(unsigned int)samplerSettings.sampleMode], adressMode, adressMode, adressMode, 0, 1, D3D11_COMPARISON_LESS, {0}, 0, D3D11_FLOAT32_MAX };
+        mini3d_assert(S_OK == pDevice->CreateSamplerState(&sampDesc, &m_pSamplerState), "Error creating sampler state!");
+
+        D3D11_VIEWPORT viewport = { 0, 0, width, height, 0 , 1 };
+        m_viewportD3D11 = viewport;
 
         m_width = width;
         m_height = height;
@@ -519,7 +694,6 @@ public:
         m_mipMapMode = mipMapMode;
     }
 
-
     void Unload()
     {
         // if we are removing the current render target, restore the default render target first
@@ -527,9 +701,9 @@ public:
             m_pGraphicsService->SetRenderTarget(0);
 
         // if we are removing one of the current textures, clear that texture slot first
-        for(unsigned int i = 0; i < m_pGraphicsService->m_pCompatibility->TextureStreamCount(); i++)
-            if (m_pGraphicsService->GetTexture(i) == this)
-                m_pGraphicsService->SetTexture(0, i, false);
+        for(unsigned int i = 0; i < m_pGraphicsService->m_pCompatibility->GetTextureUnitCount(); i++)
+            if (m_pGraphicsService->GetTexture(i, "") == this)
+                m_pGraphicsService->SetTexture(0, i, "");
 
         m_pTexture->Release();
         m_pView->Release();
@@ -546,9 +720,12 @@ private:
 
     ID3D11Texture2D* m_pTexture;
     ID3D11RenderTargetView* m_pView;
+    ID3D11SamplerState* m_pSamplerState;
     ID3D11ShaderResourceView* m_pShaderResourceView;
-
+    ID3D11Texture2D* m_pDepthStencilTexture;
+    ID3D11DepthStencilView* m_pDepthStencilView;
 	GraphicsService_D3D11* m_pGraphicsService;
+    D3D11_VIEWPORT m_viewportD3D11;
 };
 
 
@@ -558,13 +735,16 @@ class WindowRenderTarget_D3D11 : public IWindowRenderTarget
 {
 public:
 
-    unsigned int GetWidth() const           { return m_width; } 
-    unsigned int GetHeight() const          { return m_height; }
-    Viewport GetViewport() const            { Viewport v = {0,0,0,0}; return v; } // TODO: Should Do Something
-    void SetViewport(Viewport viewport)     { } // TODO: Should Do Something
-    bool GetDepthTestEnabled() const        { return m_depthTestEnabled; };
-    void* GetNativeWindow() const           { return m_pNativeWindow; }
-    ~WindowRenderTarget_D3D11()             { Unload(); }
+    unsigned int GetWidth() const                       { return m_width; } 
+    unsigned int GetHeight() const                      { return m_height; }
+    Viewport GetViewport() const                        { Viewport v = {0,0,0,0}; return v; } // TODO: Should Do Something
+    void SetViewport(Viewport viewport)                 { } // TODO: Should Do Something
+    bool GetDepthTestEnabled() const                    { return m_depthTestEnabled; };
+    void* GetNativeWindow() const                       { return m_pNativeWindow; }
+    ID3D11RenderTargetView* GetRenderTargetView() const { return m_pRenderTargetView; }
+    ID3D11DepthStencilView* GetDepthStencilView() const { return m_pDepthStencilView; }
+    D3D11_VIEWPORT GetViewportD3D11()                   { return m_viewportD3D11; }
+    ~WindowRenderTarget_D3D11()                         { Unload(); }
 
     WindowRenderTarget_D3D11(GraphicsService_D3D11* pGraphicsService, void* pNativeWindow, bool depthTestEnabled)
     {
@@ -586,21 +766,22 @@ public:
 
         Unload();
 
-        DXGI_SWAP_CHAIN_DESC desc = { {0, 0, { 60, 1 }, DXGI_FORMAT_R8G8B8A8_UNORM }, {1}, DXGI_USAGE_RENDER_TARGET_OUTPUT, 2, (HWND)pNativeWindow };
-        
-        IDXGIFactory * pFactory;
-        mini3d_assert(S_OK(CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)(&pFactory))), "Unable to create DXGI factory!");
-        mini3d_assert(S_OK(pFactory->CreateSwapChain(pDevice, &desc, &m_pSwapChain)), "Unable to create swap chain!");
-
-        ID3D11Texture2D* pBackBuffer;
-        mini3d_assert(S_OK(m_pSwapChain->GetBuffer(0, __uuidof( ID3D11Texture2D ), (LPVOID*)&pBackBuffer)), "Unable to get back buffer for swap chain!");
-        mini3d_assert(S_OK(pDevice->CreateRenderTargetView(pBackBuffer, NULL, &m_pRenderTargetView)), "Unable to create render target view for swap chain back buffer!");
+        m_pNativeWindow = pNativeWindow;
 
         UpdateSize();
 
+        DXGI_SWAP_CHAIN_DESC desc = { {m_width, m_height, { 0, 1 }, DXGI_FORMAT_R8G8B8A8_UNORM }, {1}, DXGI_USAGE_RENDER_TARGET_OUTPUT, 2, (HWND)pNativeWindow, TRUE };
+        
+        IDXGIFactory * pFactory = m_pGraphicsService->GetFactory();
+        mini3d_assert(S_OK == pFactory->CreateSwapChain(pDevice, &desc, &m_pSwapChain), "Unable to create swap chain!");
+
+        ID3D11Texture2D* pBackBuffer;
+        mini3d_assert(S_OK == m_pSwapChain->GetBuffer(0, __uuidof( ID3D11Texture2D ), (LPVOID*)&pBackBuffer), "Unable to get back buffer for swap chain!");
+        mini3d_assert(S_OK == pDevice->CreateRenderTargetView(pBackBuffer, NULL, &m_pRenderTargetView), "Unable to create render target view for swap chain back buffer!");
+       
+
         // Get the size of the client area of the window 
         m_depthTestEnabled = depthTestEnabled;
-        m_pNativeWindow = pNativeWindow;
         
         pFactory->Release();
     }
@@ -614,9 +795,13 @@ public:
         width = rect.right - rect.left;
         height = rect.bottom - rect.top;
 
+        D3D11_VIEWPORT viewport = { 0, 0, width, height, 0 , 1 };
+        m_viewportD3D11 = viewport;
+
         if (width != m_width || height != m_height)
         {
-            m_pSwapChain->ResizeBuffers(2, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+            if (m_pSwapChain != 0)
+                m_pSwapChain->ResizeBuffers(2, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
 
             if (m_pDepthStencilTexture != 0)
             {
@@ -631,10 +816,10 @@ public:
             {
                 ID3D11Device* pDevice = m_pGraphicsService->GetDevice();
                 D3D11_TEXTURE2D_DESC desc = { width, height, 1, 1, DXGI_FORMAT_D24_UNORM_S8_UINT, {1}, D3D11_USAGE_DEFAULT, D3D11_BIND_DEPTH_STENCIL };
-                mini3d_assert(S_OK(pDevice->CreateTexture2D(&desc, NULL, &m_pDepthStencilTexture)), "Unable to create depth stencil texture!");
+                mini3d_assert(S_OK == pDevice->CreateTexture2D(&desc, NULL, &m_pDepthStencilTexture), "Unable to create depth stencil texture!");
             
                 D3D11_DEPTH_STENCIL_VIEW_DESC viewDesc = { DXGI_FORMAT_D24_UNORM_S8_UINT, D3D11_DSV_DIMENSION_TEXTURE2D }; // Texture2D.MipSlice will be zero initialized
-                mini3d_assert(S_OK(pDevice->CreateDepthStencilView(m_pDepthStencilTexture, &viewDesc, &m_pDepthStencilView)), "Unable to create depth stencil view!");
+                mini3d_assert(S_OK == pDevice->CreateDepthStencilView(m_pDepthStencilTexture, &viewDesc, &m_pDepthStencilView), "Unable to create depth stencil view!");
             }
 
             m_width = width;
@@ -644,11 +829,8 @@ public:
 
     void Display()
     {
-        /// Make sure we do an endScene before we present (DirectX9 specific).
-        if (m_pGraphicsService->GetIsDrawingScene() == true)
-            m_pGraphicsService->EndScene();
-
-        m_pSwapChain->Present(1, 0);
+        HRESULT res = m_pSwapChain->Present(1, 0);
+        int j = 0;
     }
 
     void Unload()
@@ -686,6 +868,7 @@ private:
     ID3D11Texture2D* m_pDepthStencilTexture;
     ID3D11DepthStencilView* m_pDepthStencilView;
     GraphicsService_D3D11* m_pGraphicsService;
+    D3D11_VIEWPORT m_viewportD3D11;
 };
 
 
@@ -703,7 +886,7 @@ public:
     const char* PixelShaderVersion() const                                      { return 0; }
     const char* VertexShaderVersion() const                                     { return 0; }
     uint VertexStreamCount() const                                              { return 32; }
-    uint  FreeGraphicsMemory() const                                            { return m_pGraphicsService->m_pDevice->GetAvailableTextureMem(); }
+    uint  FreeGraphicsMemory() const                                            { return 0; }
 
     ~Compatibility_D3D11()                                                      { }
 
@@ -721,34 +904,25 @@ public:
 ///////// GRAPHICS SERVICE ////////////////////////////////////////////////////
 
     const ICompatibility* GetCompatibility() const                                  { return m_pCompatibility; }
-
-    // Pipeline States
-    void SetShaderProgram(IShaderProgram* pShaderProgram)                           { SetShaderProgram((ShaderProgram_D3D11*)pShaderProgram, false); };
-    void SetTexture(ITexture* pTexture, const char* name)                           { SetTexture(pTexture, name, false); };
-    void SetRenderTarget(IRenderTarget* pRenderTarget)                              { SetRenderTarget(pRenderTarget, false); };
-    void SetIndexBuffer(IIndexBuffer* pIndexBuffer)                                 { SetIndexBuffer((IndexBuffer_D3D11*)pIndexBuffer, false); };
-    void SetVertexBuffer(IVertexBuffer* pVertexBuffer, unsigned int streamIndex)    { SetVertexBuffer((VertexBuffer_D3D11*)pVertexBuffer, streamIndex, false); };
+    ID3D11Device* GetDevice() const                                                 { return m_pDevice; }
+    ID3D11DeviceContext* GetContext() const                                         { return m_pContext; }
+    IDXGIFactory* GetFactory() const                                                { return m_pFactory; }
 
     ~GraphicsService_D3D11()                                                        { m_pDevice->Release(); m_pContext->Release(); m_pFactory->Release(); }
 
     GraphicsService_D3D11()
     {
-        m_pD3D = 0;
         m_pDevice = 0;
-        m_IsDrawingScene = false;
-        m_DeviceLost = true;
         m_pCurrentRenderTarget = 0;
-        m_pDefaultSwapChain = 0;
         m_pCurrentVertexShader = 0;
 
-        mini3d_assert(S_OK(CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)(&m_pFactory))), "Unable to create DXGI factory!");
+        mini3d_assert(S_OK == CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)(&m_pFactory)), "Unable to create DXGI factory!");
 
         IDXGIAdapter* pAdapter;
-        mini3d_assert(S_OK(m_pFactory->EnumAdapters(0, &pAdapter)), "Unable to get default graphics adapter");
+        mini3d_assert(S_OK == m_pFactory->EnumAdapters(0, &pAdapter), "Unable to get default graphics adapter");
     
         D3D_FEATURE_LEVEL m_featureLevel;
-        D3D11CreateDevice(pAdapter, D3D_DRIVER_TYPE_HARDWARE, GetModuleHandle(NULL), D3D11_CREATE_DEVICE_SINGLETHREADED, NULL, 0, D3D11_SDK_VERSION, &m_pDevice, &m_featureLevel, &m_pContext); 
-
+        mini3d_assert(S_OK == D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, D3D11_CREATE_DEVICE_SINGLETHREADED | D3D11_CREATE_DEVICE_DEBUG, NULL, 0, D3D11_SDK_VERSION, &m_pDevice, &m_featureLevel, &m_pContext), "Failed to create device!");
 
         pAdapter->Release();
 
@@ -762,34 +936,22 @@ public:
             m_CurrentITextureMap[i] = 0;
         }
 
-        SetCullMode(CULL_COUNTERCLOCKWIZE); // TODO: Move somewhere proper!
+        D3D11_RASTERIZER_DESC desc = { D3D11_FILL_SOLID, D3D11_CULL_FRONT, FALSE, 0.0f, 0.0f, 0.0f, TRUE, FALSE, FALSE, FALSE };
+        m_pDevice->CreateRasterizerState(&desc, &m_pRasterizerStateCullClockwize);
+        D3D11_RASTERIZER_DESC desc2 = { D3D11_FILL_SOLID, D3D11_CULL_BACK, FALSE, 0.0f, 0.0f, 0.0f, TRUE, FALSE, FALSE, FALSE };
+        m_pDevice->CreateRasterizerState(&desc2, &m_pRasterizerStateCullCounterClockwize);
+        D3D11_RASTERIZER_DESC desc3 = { D3D11_FILL_SOLID, D3D11_CULL_NONE, FALSE, 0.0f, 0.0f, 0.0f, TRUE, FALSE, FALSE, FALSE };
+        m_pDevice->CreateRasterizerState(&desc3, &m_pRasterizerStateCullNone);
+
+        SetCullMode(CULL_CLOCKWIZE); // TODO: Move somewhere proper!
     }
-
-    // Locking resources
-    void BeginScene(void)
-    {
-        if (m_IsDrawingScene == true)
-            return;
-
-        if (m_pDevice == 0)
-            return;
-
-        m_IsDrawingScene = true;
-    }
-    void EndScene(void)
-    {
-        m_pDevice->EndScene();
-        m_IsDrawingScene = false;
-    }
-
-
 
     // Graphics Pipeline States ---------------------------------------------------
 
     // Shader Program
     IShaderProgram* GetShaderProgram() const { return m_pCurrentShaderProgram; }
 
-    void SetShaderProgram(ShaderProgram_D3D11* pShaderProgram, bool forced)
+    void SetShaderProgram(IShaderProgram* pShaderProgram)
     {
         if (pShaderProgram != 0)
         {
@@ -823,99 +985,63 @@ public:
             }
         }
 
-        m_pCurrentShaderProgram = pShaderProgram;
+        m_pCurrentShaderProgram = (ShaderProgram_D3D11*)pShaderProgram;
     }
 
     // Texture
-    ITexture* GetTexture(unsigned int index) const 
+    ITexture* GetTexture(unsigned int idD3D, const char* nameOGL) const 
     {
-        mini3d_assert((index < m_pCompatibility->GetTextureUnitCount() && index < MAX_TEXTURE_BUFFER_SLOTS), "Trying to access texture outside valid range!");
+        mini3d_assert((idD3D < m_pCompatibility->GetTextureUnitCount() && idD3D < MAX_TEXTURE_BUFFER_SLOTS), "Trying to access texture outside valid range!");
 
-        return m_CurrentITextureMap[index];
+        return m_CurrentITextureMap[idD3D];
     }
 
-    void SetTexture(ITexture* pTexture, const char* name)
+    void SetTexture(ITexture* pTexture, unsigned int idD3D, const char* nameOGL)
     {    
         mini3d_assert(m_pCurrentShaderProgram != 0, "Trying to assign a texture to a sampler without having set a shader program!");
+        mini3d_assert(idD3D != -1, "Trying to assign a texture to a sampler that can not be found in the current shader program!");
 
-        unsigned int index = m_pCurrentPixelShader->GetSamplerIndex(name);
-        mini3d_assert(index != -1, "Trying to assign a texture to a sampler that can not be found in the current shader program!");
-
-        SetTexture(pTexture, index);
-    }
-
-    void SetTexture(ITexture* pTexture, unsigned int index)
-    {    
-        mini3d_assert(index < m_pCompatibility->GetTextureUnitCount() && index < MAX_TEXTURE_BUFFER_SLOTS, "Trying to assign a texture to a sampler slot outside the valid range!");
+        mini3d_assert(idD3D < m_pCompatibility->GetTextureUnitCount(), "Trying to assign a texture to a sampler slot outside the valid range!");
 
         // if texture already assigned, then there is no need to re-assign it
-        if (m_CurrentITextureMap[index] == pTexture) 
+        if (m_CurrentITextureMap[idD3D] == pTexture) 
             return;
 
         if (pTexture == 0)
         {
             // TODO: Does the NULL trick below work or does it have to be a list?
-            //static const ID3D11ShaderResourceView* NULL_LIST[] = { NULL };
-            m_pContext->PSSetShaderResources(index, 1, NULL);
-            m_pContext->PSSetSamplers(index, 1, NULL);
+            ID3D11ShaderResourceView* const NULL_LIST[] = { NULL };
+            ID3D11SamplerState* const NULL_LIST2[] = { NULL };
+            m_pContext->PSSetShaderResources(idD3D, 1, &NULL_LIST[0]);
+            m_pContext->PSSetSamplers(idD3D, 1, &NULL_LIST2[0]);
 
-            m_CurrentITextureMap[index] = 0;
+            m_CurrentITextureMap[idD3D] = 0;
+            return;
         }
-        else
+
+        ID3D11ShaderResourceView* pShaderResourceView;
+        ID3D11SamplerState* pSamplerState;
+
+        if (pTexture->GetType() == IBitmapTexture::TYPE)
         {
-            BitmapTexture_D3D11* pBitmapTexture = dynamic_cast<BitmapTexture_D3D11*>(pTexture);
-            RenderTargetTexture_D3D11* pRenderTargetTexture = dynamic_cast<RenderTargetTexture_D3D11*>(pTexture);
-
-            /*
-            // Get the sampler settings from the texture
-            ITexture::SamplerSettings samplerSettings = pTexture->GetSamplerSettings();
-
-            // TODO: These should only be set if needed, not every time.
-
-            // Set wrap mode 
-            D3DTEXTUREADDRESS adressMode;
-            switch(samplerSettings.wrapMode)
-            {
-                case ITexture::SamplerSettings::WRAP_TILE: adressMode = D3DTADDRESS_WRAP; break;
-                case ITexture::SamplerSettings::WRAP_CLAMP: adressMode = D3DTADDRESS_CLAMP; break;
-            }
-
-            // set the wrap style
-            m_pDevice->SetSamplerState(index, D3DSAMP_ADDRESSU, adressMode);
-            m_pDevice->SetSamplerState(index, D3DSAMP_ADDRESSV, adressMode);
-
-            // Set filter mode
-            D3DTEXTUREFILTERTYPE filter;
-
-            switch(samplerSettings.sampleMode)
-            {
-                case ITexture::SamplerSettings::SAMPLE_LINEAR: filter = D3DTEXF_LINEAR; break;
-                case ITexture::SamplerSettings::SAMPLE_NEAREST: filter = D3DTEXF_POINT; break;
-            }
-
-            // set the wrap style
-            m_pDevice->SetSamplerState(index, D3DSAMP_MAGFILTER, filter);
-            m_pDevice->SetSamplerState(index, D3DSAMP_MINFILTER, filter);
-            m_pDevice->SetSamplerState(index, D3DSAMP_MIPFILTER, filter);
-            */
-
-            // set the texture
-            if (pBitmapTexture) 
-            { 
-                m_pContext->PSSetShaderResources(index, 1, &pBitmapTexture->GetTextureResourceView());
-                // TODO: Set proper sampler settings
-                m_pContext->PSSetSamplers(index, 1, 0);
-            }
-            else if (pRenderTargetTexture) 
-            { 
-                m_pDevice->SetTexture(index, pRenderTargetTexture->GetTextureResourceView()); 
-                // TODO: Set proper sampler settings
-                m_pContext->PSSetSamplers(index, 1, 0);
-            }
-        
-            // Set the current texture
-            m_CurrentITextureMap[index] = pTexture;
+            pShaderResourceView = ((BitmapTexture_D3D11*)pTexture)->GetShaderResourceView();
+            pSamplerState = ((BitmapTexture_D3D11*)pTexture)->GetSamplerState();
         }
+        else // IRenderTargetTexture::TYPE
+        {
+            pShaderResourceView = ((RenderTargetTexture_D3D11*)pTexture)->GetShaderResourceView();
+
+            if (((RenderTargetTexture_D3D11*)pTexture)->GetMipMapMode() == ITexture::MIPMAP_AUTOGENERATE)
+                m_pContext->GenerateMips(pShaderResourceView);
+
+            pSamplerState = ((RenderTargetTexture_D3D11*)pTexture)->GetSamplerState();
+        }
+
+        m_pContext->PSSetShaderResources(idD3D, 1, &pShaderResourceView);
+        m_pContext->PSSetSamplers(idD3D, 1, &pSamplerState);
+
+        // Set the current texture
+        m_CurrentITextureMap[idD3D] = pTexture;
     }
 
     // Render Target
@@ -933,17 +1059,33 @@ public:
             m_pCurrentRenderTarget = 0;
             return;
         }
-
-        IRenderTarget_D3D11* pRenderTargetD3D11 = (IRenderTarget_D3D11*)pRenderTarget;
-        m_pContext->OMSetRenderTargets(1, &pRenderTargetD3D11->GetRenderTargetView(), &pRenderTargetD3D11->GetDepthStencilView());
         
+        ID3D11RenderTargetView* pRTView;
+        ID3D11DepthStencilView* pDSView;
+        D3D11_VIEWPORT viewport;
+
+        if (pRenderTarget->GetType() == IRenderTargetTexture::TYPE)
+        {
+            pRTView = ((RenderTargetTexture_D3D11*)pRenderTarget)->GetRenderTargetView();
+            pDSView = ((RenderTargetTexture_D3D11*)pRenderTarget)->GetDepthStencilView();
+            viewport = ((RenderTargetTexture_D3D11*)pRenderTarget)->GetViewportD3D11();
+        }
+        else // IWindowRenderTarget::TYPE
+        {
+            pRTView = ((WindowRenderTarget_D3D11*)pRenderTarget)->GetRenderTargetView();
+            pDSView = ((WindowRenderTarget_D3D11*)pRenderTarget)->GetDepthStencilView();
+            viewport = ((WindowRenderTarget_D3D11*)pRenderTarget)->GetViewportD3D11();
+        }
+        
+        m_pContext->OMSetRenderTargets(1, &pRTView, pDSView);
+        m_pContext->RSSetViewports(1, &viewport);
         m_pCurrentRenderTarget = pRenderTarget;
     }
 
     // Index Buffer
     IIndexBuffer* GetIndexBuffer() const { return m_pCurrentIndexBuffer; }
 
-    void SetIndexBuffer(IndexBuffer_D3D11* pIndexBuffer)
+    void SetIndexBuffer(IIndexBuffer* pIndexBuffer)
     {
         if (m_pCurrentIndexBuffer == pIndexBuffer) 
             return;
@@ -953,9 +1095,9 @@ public:
         if (pIndexBuffer == 0)
             m_pContext->IASetIndexBuffer(0, DXGI_FORMAT_R16_UINT, 0);
         else
-            m_pContext->IASetIndexBuffer(pIndexBuffer->GetBuffer(), FORMATS[pIndexBuffer->GetDataType()], 0);
+            m_pContext->IASetIndexBuffer(((IndexBuffer_D3D11*)pIndexBuffer)->GetBuffer(), FORMATS[pIndexBuffer->GetDataType()], 0);
 
-        m_pCurrentIndexBuffer = pIndexBuffer;
+        m_pCurrentIndexBuffer = (IndexBuffer_D3D11*)pIndexBuffer;
     }
 
     // Vertex Buffer
@@ -966,11 +1108,11 @@ public:
         return m_CurrentIVertexBufferMap[streamIndex];
     }
 
-    void SetVertexBuffer(VertexBuffer_D3D11* pVertexBuffer, unsigned int streamIndex, bool forced)
+    void SetVertexBuffer(IVertexBuffer* pVertexBuffer, unsigned int streamIndex)
     {
         mini3d_assert(streamIndex < m_pCompatibility->VertexStreamCount() && streamIndex < MAX_VERTEX_BUFFER_SLOTS, "Trying to set a Vertex Buffer with a stream index outside the valid interval");
 
-        if (m_CurrentIVertexBufferMap[streamIndex] == pVertexBuffer && forced == false)
+        if (m_CurrentIVertexBufferMap[streamIndex] == pVertexBuffer)
             return;
 
         const UINT ZERO_ARRAY[] = {0};
@@ -984,151 +1126,51 @@ public:
         else
         {
             UINT stride = pVertexBuffer->GetVertexSizeInBytes();
-            ID3D11Buffer* pBuffer = pVertexBuffer->GetBuffer();
+            ID3D11Buffer* pBuffer = ((VertexBuffer_D3D11*)pVertexBuffer)->GetBuffer();
             m_pContext->IASetVertexBuffers(0, 1, &pBuffer, &stride, ZERO_ARRAY);
-            m_CurrentIVertexBufferMap[streamIndex] = pVertexBuffer;
+            m_CurrentIVertexBufferMap[streamIndex] = (VertexBuffer_D3D11*)pVertexBuffer;
         }
     }
 
-    // Shader Parameters
-    void SetShaderParameterFloat(const char* name, const float* pData, unsigned int count)
+    IConstantBuffer* GetConstantBuffer(unsigned int id, const char* nameOGL)
     {
-        mini3d_assert(m_pCurrentShaderProgram != 0, "Trying to set a Float Shader Parameter without having set a Shader Program!");
-
-        m_pCurrentVertexShader->SetConstantFloatArray(name, pData, count);
+        // TODO: fix!
+        return m_pCurrentConstantBuffer;
     }
-    void SetShaderParameterInt(const char* name, const int* pData, unsigned int count)
-    {
-        mini3d_assert(m_pCurrentShaderProgram != 0, "Trying to set an Integer Shader Parameter without having set a Shader Program!");
-
-        m_pCurrentVertexShader->SetConstantIntArray(name, pData, count);
-    }
-    void SetShaderParameterMatrix4x4(const char* name, const float* pData)
-    {
-        mini3d_assert(m_pCurrentShaderProgram != 0, "Trying to set a Shader Parameter Matrix without having set a Shader Program!");
     
-        m_pCurrentVertexShader->SetConstantFloatArray(name, pData, 16);
-    }
-
-    // Set all vertex attributes for all streams with vertex buffers
-    void UpdateVertexDeclaration()
+    void SetConstantBuffer(IConstantBuffer* pBuffer, unsigned int id, const char* nameOGL)
     {
-        bool activeAttributeIndices[32] = {};
-        bool usesInstancing = false;
-        unsigned int instanceCount = 0;
-
-        // Find out how many component descriptions there are for all streams
-        unsigned int vertexElementCount = 0;
-        for (unsigned int streamIndex = 0; streamIndex < 16; ++streamIndex)
-        {
-            if (m_CurrentIVertexBufferMap[streamIndex] != 0) 
-            {
-                unsigned int componentDescriptionCount;
-                m_CurrentIVertexBufferMap[0]->GetComponentDescriptions(componentDescriptionCount);
-                vertexElementCount += componentDescriptionCount;
-            }
-        }
-
-        D3DVERTEXELEMENT9* vertexElements = new D3DVERTEXELEMENT9[vertexElementCount + 1];
-
-        // Loop over all streams
-        for (unsigned int streamIndex = 0; streamIndex < 16; ++streamIndex)
-        {
-            // Skip empty streams
-            if (m_CurrentIVertexBufferMap[streamIndex] == 0)
-                continue;
-
-            VertexBuffer_D3D11* pVertexBuffer = dynamic_cast<VertexBuffer_D3D11*>(m_CurrentIVertexBufferMap[streamIndex]);
-            ShaderProgram_D3D11* pShaderProgram = dynamic_cast<ShaderProgram_D3D11*>(m_pCurrentShaderProgram);
-
-            unsigned int componentDescriptionCount;
-            const VertexBuffer_D3D11::ComponentDescription* pComponentDescriptions = m_CurrentIVertexBufferMap[0]->GetComponentDescriptions(componentDescriptionCount); 
-
-            unsigned int stride = 0;
-            for(unsigned int i = 0; i < componentDescriptionCount; ++i)
-                stride += pComponentDescriptions[i].count * 4;
-    
-            unsigned int offset = 0;
-            for(unsigned int i = 0; i < componentDescriptionCount; ++i)
-            {
-                D3DVERTEXELEMENT9 element;
-
-                VertexShader_D3D11* pVertexShader = dynamic_cast<VertexShader_D3D11*>(pShaderProgram->GetVertexShader());
-
-                unsigned int shaderSize;
-                DWORD* shaderData = (DWORD*)pVertexShader->GetVertexShader(shaderSize);
-
-                unsigned int semanticsCount;
-                D3DXGetShaderInputSemantics(shaderData, 0, &semanticsCount);
-
-                D3DXSEMANTIC* semantics = new D3DXSEMANTIC[semanticsCount];
-                D3DXGetShaderInputSemantics(shaderData, semantics, &semanticsCount);
-
-                // Find the semantic in the semantics list to get the input index
-                int index = -1;
-                for (unsigned int j = 0; j < semanticsCount; ++j) 
-                    if (semantics[j].Usage == pComponentDescriptions[i].usage && semantics[j].UsageIndex == pComponentDescriptions[i].usageIndex) 
-                        { index = j; break; }
-                // TODO: Check that we actually found an index!
-    
-                int type;
-                switch (pComponentDescriptions[i].type) {
-                    case VertexBuffer_D3D11::DATA_TYPE_FLOAT:
-                    default:
-                        type = D3DDECLTYPE_FLOAT1 + (pComponentDescriptions[i].count - 1);
-                }
-
-                // Get value for geometry instancing
-                unsigned int frequency = 0;
-                switch(pVertexBuffer->GetStreamMode()) 
-                {
-                    case VertexBuffer_D3D11::STREAM_PER_INSTANCE:
-                        frequency = 1;
-                        instanceCount = pVertexBuffer->GetVertexCount(); // TODO: Error if this is set and then reset to something else for the same draw call!
-                        m_pDevice->SetStreamSourceFreq(streamIndex, (D3DSTREAMSOURCE_INSTANCEDATA | 1));
-                        usesInstancing = true;
-                        break;
-                    case VertexBuffer_D3D11::STREAM_PER_VERTEX:
-                    default:
-                        m_pDevice->SetStreamSourceFreq(streamIndex, (D3DSTREAMSOURCE_INDEXEDDATA | 1));
-                }
-
-                element.Stream = streamIndex;
-                element.Offset = offset;
-                element.Type = type;
-                element.Method = D3DDECLMETHOD_DEFAULT;
-                element.Usage = pComponentDescriptions[i].usage;
-                element.UsageIndex = pComponentDescriptions[i].usageIndex;
-
-                offset += pComponentDescriptions[i].count * 4;
+        // TODO: Make this some sort of map!
+        ID3D11Buffer* pBufferD3D11 = ((ConstantBuffer_D3D11*)pBuffer)->GetBuffer();
+        m_pContext->VSSetConstantBuffers(id, 1, &pBufferD3D11);
         
-                vertexElements[i] = element;
-            }
-        }
-
-        // Turn on geometry instancing as needed
-        if (usesInstancing) m_pDevice->SetStreamSourceFreq(0, D3DSTREAMSOURCE_INDEXEDDATA | instanceCount); // TODO: This should only be done once... (but most of the time there will only be one instance stream!)
-
-        D3DVERTEXELEMENT9 end = D3DDECL_END();
-        vertexElements[vertexElementCount] = end;
-
-        // Create a new vertex declaration from the elements above and set it
-        IDirect3DVertexDeclaration9* vertexDeclaration;
-        m_pDevice->CreateVertexDeclaration(vertexElements, &vertexDeclaration);
-        m_pDevice->SetVertexDeclaration(vertexDeclaration);
-
-        // Release the vertex declaration (if it is not null (was created correctly))
-        if (vertexDeclaration) vertexDeclaration->Release();
+        m_pCurrentConstantBuffer = (ConstantBuffer_D3D11*)pBuffer;
     }
-
-    _D3DCULL mini3d_Cullmodes[] = { D3DCULL_CW, D3DCULL_CCW, D3DCULL_NONE };
+    
+    IShaderInputLayout* GetShaderInputLayout()
+    {
+        return m_pCurrentShaderInputLayout;
+    }
+    
+    void SetShaderInputLayout(IShaderInputLayout* pLayout)
+    {
+        m_pContext->IASetInputLayout(((ShaderInputLayout_D3D11*)pLayout)->GetLayout());
+        m_pCurrentShaderInputLayout = (ShaderInputLayout_D3D11*)pLayout;
+    }
 
     void SetCullMode(CullMode cullMode)
     {
-        if (cullMode == m_CurrentCullMode) return;
+        if (m_cullMode == cullMode)
+            return;
     
-        m_pDevice->SetRenderState(D3DRS_CULLMODE, mini3d_Cullmodes[cullMode]);
-        m_CurrentCullMode = cullMode;
+        m_cullMode = cullMode;
+
+        if (cullMode == CULL_CLOCKWIZE)
+            m_pContext->RSSetState(m_pRasterizerStateCullClockwize);
+        else if (cullMode == CULL_COUNTERCLOCKWIZE)
+            m_pContext->RSSetState(m_pRasterizerStateCullCounterClockwize);
+        else // cullmode == CULL_NONE
+            m_pContext->RSSetState(m_pRasterizerStateCullNone);
     }
 
     // Drawing
@@ -1146,45 +1188,69 @@ public:
         if (m_pCurrentShaderProgram == 0)
             return;
 
+        if (m_pCurrentShaderInputLayout == 0)
+            return;
+
         // Update vertex delcaration as needed
-        UpdateVertexDeclaration();
+        //UpdateVertexDeclaration();
+
+        // TODO: Where does this go?
+        m_pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         // Draw the stuff in the buffers
-        m_pContext->DrawAuto();
+        m_pContext->DrawIndexed(m_pCurrentIndexBuffer->GetIndexCount(), 0, 0);
     }
 
     // Clear
     void Clear(float depth)
     {
+        if (m_pCurrentRenderTarget == 0)
+            return;
+
         if (m_pCurrentRenderTarget->GetDepthTestEnabled() == false)
             return;
 
-        m_pContext->ClearDepthStencilView(m_pCurrentRenderTarget->GetDepthStencilView(), D3D11_CLEAR_DEPTH, depth, 0);
+        ID3D11DepthStencilView* pDSView;
+
+        if (m_pCurrentRenderTarget->GetType() == IRenderTargetTexture::TYPE)
+            pDSView = ((RenderTargetTexture_D3D11*)m_pCurrentRenderTarget)->GetDepthStencilView();
+        else // IWindowRenderTarget::TYPE
+            pDSView = ((WindowRenderTarget_D3D11*)m_pCurrentRenderTarget)->GetDepthStencilView();
+
+        m_pContext->ClearDepthStencilView(pDSView, D3D11_CLEAR_DEPTH, depth, 0);
     }
 
     void Clear(float r, float g, float b, float a)
     {
         FLOAT color[] = { r, g, b, a };
-        m_pContext->ClearRenderTargetView(m_pCurrentRenderTarget->GetRenderTargetView(), color);
+
+        ID3D11RenderTargetView* pRTView;
+
+        if (m_pCurrentRenderTarget->GetType() == IRenderTargetTexture::TYPE)
+            pRTView = ((RenderTargetTexture_D3D11*)m_pCurrentRenderTarget)->GetRenderTargetView();
+        else // IWindowRenderTarget::TYPE
+            pRTView = ((WindowRenderTarget_D3D11*)m_pCurrentRenderTarget)->GetRenderTargetView();
+
+        m_pContext->ClearRenderTargetView(pRTView, color);
     }
 
     void Clear(float r, float g, float b, float a, float depth)
     {
-        // if we have a depthstencil we need to clear that too
-        if (m_pCurrentRenderTarget->GetDepthTestEnabled() == true)
-            m_pContext->ClearDepthStencilView(m_pCurrentRenderTarget->GetDepthStencilView(), D3D11_CLEAR_DEPTH, depth, 0);
-
-        FLOAT color[] = { r, g, b, a };
-        m_pContext->ClearRenderTargetView(m_pCurrentRenderTarget->GetRenderTargetView(), color);
+        Clear(depth);
+        Clear(r,g,b,a);
     }
 
 private:
+
 	IRenderTarget* m_pCurrentRenderTarget;
 	VertexBuffer_D3D11* m_CurrentIVertexBufferMap[MAX_VERTEX_BUFFER_SLOTS];
 	IndexBuffer_D3D11* m_pCurrentIndexBuffer;
 	PixelShader_D3D11* m_pCurrentPixelShader;
 	VertexShader_D3D11* m_pCurrentVertexShader;
 	ShaderProgram_D3D11* m_pCurrentShaderProgram;
+    ConstantBuffer_D3D11* m_pCurrentConstantBuffer;
+    ShaderInputLayout_D3D11* m_pCurrentShaderInputLayout;
+
 	ITexture* m_CurrentITextureMap[MAX_TEXTURE_BUFFER_SLOTS];
     CullMode m_CurrentCullMode;
 	
@@ -1194,7 +1260,27 @@ private:
     ID3D11Device* m_pDevice;
     ID3D11DeviceContext* m_pContext;
 
+    CullMode m_cullMode;
+    ID3D11RasterizerState* m_pRasterizerStateCullClockwize;
+    ID3D11RasterizerState* m_pRasterizerStateCullCounterClockwize;
+    ID3D11RasterizerState* m_pRasterizerStateCullNone;
 };
+
+IGraphicsService* IGraphicsService::New() { return new GraphicsService_D3D11(); }
+
+IIndexBuffer* IIndexBuffer::New(IGraphicsService* pGraphics, const void* pIndices, unsigned int count, DataType dataType) { return new GraphicsService_D3D11::IndexBuffer_D3D11((GraphicsService_D3D11*)pGraphics, pIndices, count, dataType); }
+IVertexBuffer* IVertexBuffer::New(IGraphicsService* pGraphics, const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes) { return new GraphicsService_D3D11::VertexBuffer_D3D11((GraphicsService_D3D11*)pGraphics, pVertices, vertexCount, vertexSizeInBytes); }
+IPixelShader* IPixelShader::New(IGraphicsService* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes, bool precompiled) { return new GraphicsService_D3D11::PixelShader_D3D11((GraphicsService_D3D11*)pGraphics, pShaderBytes, sizeInBytes, precompiled); }
+IVertexShader* IVertexShader::New(IGraphicsService* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes, bool precompiled) { return new GraphicsService_D3D11::VertexShader_D3D11((GraphicsService_D3D11*)pGraphics, pShaderBytes, sizeInBytes, precompiled); }
+IShaderProgram* IShaderProgram::New(IGraphicsService* pGraphics, IVertexShader* pVertexShader, IPixelShader* pPixelShader) { return new GraphicsService_D3D11::ShaderProgram_D3D11((GraphicsService_D3D11*)pGraphics, pVertexShader, pPixelShader); }
+
+IRenderTargetTexture* IRenderTargetTexture::New(IGraphicsService* pGraphics, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled, MipMapMode mipMapMode) { return new GraphicsService_D3D11::RenderTargetTexture_D3D11((GraphicsService_D3D11*)pGraphics, width, height, format, samplerSettings, depthTestEnabled, mipMapMode); }
+IWindowRenderTarget* IWindowRenderTarget::New(IGraphicsService* pGraphics, void* pNativeWindow, bool depthTestEnabled) { return new GraphicsService_D3D11::WindowRenderTarget_D3D11((GraphicsService_D3D11*)pGraphics, pNativeWindow, depthTestEnabled); }
+IBitmapTexture* IBitmapTexture::New(IGraphicsService* pGraphics, const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, MipMapMode mipMapMode) { return new GraphicsService_D3D11::BitmapTexture_D3D11((GraphicsService_D3D11*) pGraphics, pBitmap, width, height, format, samplerSettings, mipMapMode); }
+
+IConstantBuffer* IConstantBuffer::New(IGraphicsService* pGraphics, unsigned int sizeInBytes, IShaderProgram* pShader, const char** names, unsigned int nameCount) { return new GraphicsService_D3D11::ConstantBuffer_D3D11((GraphicsService_D3D11*)pGraphics, sizeInBytes, pShader, names, nameCount); }
+IShaderInputLayout* IShaderInputLayout::New(IGraphicsService* pGraphics, IShaderProgram* pShader, InputElement* pElements, unsigned int count) { return new GraphicsService_D3D11::ShaderInputLayout_D3D11((GraphicsService_D3D11*)pGraphics, pShader, pElements, count); }
+
 
 }
 }

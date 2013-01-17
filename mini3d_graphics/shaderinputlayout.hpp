@@ -27,7 +27,7 @@ struct IShaderInputLayout
 	virtual ~IShaderInputLayout() {};
 
     virtual unsigned int GetInputElementCount() const = 0;
-    virtual void GetInputAttributes(InputElement* pElements) const = 0;
+    virtual void GetInputElements(InputElement* pElements) const = 0;
 };
 }
 }

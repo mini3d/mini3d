@@ -14,7 +14,7 @@ struct IGraphicsService;
 
 struct IPixelShader
 {
-    static IPixelShader* New(IGraphicsService* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes);
+    static IPixelShader* New(IGraphicsService* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes, bool precompiled = false);
  	virtual ~IPixelShader() {};
 };
 }

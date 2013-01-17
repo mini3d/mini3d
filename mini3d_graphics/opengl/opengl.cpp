@@ -383,7 +383,7 @@ struct ShaderInputLayout_OpenGL : IShaderInputLayout
     struct Attribute { GLuint location; GLint size; GLenum type; unsigned int bufferIndex; GLvoid* offsetInBytes; StreamRate rate; }; 
 
     unsigned int GetInputElementCount() const { return m_attributeCount; };
-    void GetInputAttributes(InputElement* pElements) const { for(unsigned int i = 0; i < m_attributeCount; ++i) pElements[i]= m_pElements[i]; };
+    void GetInputElements(InputElement* pElements) const { for(unsigned int i = 0; i < m_attributeCount; ++i) pElements[i]= m_pElements[i]; };
 
     ShaderInputLayout_OpenGL(GraphicsService_OpenGL* pGraphics, IShaderProgram* pShader, InputElement* pElements, unsigned int count)
     {
