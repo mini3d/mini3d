@@ -77,6 +77,5 @@ void File::SetOffset(long offset)                   { fseek(m_pI->file, offset, 
 #endif
 
 
-
 #endif
 #endif
