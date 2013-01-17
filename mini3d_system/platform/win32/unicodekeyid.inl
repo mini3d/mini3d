@@ -7,6 +7,7 @@
 #ifdef _WIN32
 
 enum UnicodeKeyId {
+    
     UKID_NONE       = 0,
 
     UKID_LEFT       = 0x25,

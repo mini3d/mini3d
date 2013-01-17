@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include <cmath>
 
+
 void mini3d_assert(bool expression, const char* text, ...);
 
 // Lock object holds a mutex and releases it when the lock object goes out of scope
