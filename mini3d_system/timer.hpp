@@ -10,6 +10,7 @@
 namespace mini3d {
 namespace system {
 
+
 class Timer
 {
 public:

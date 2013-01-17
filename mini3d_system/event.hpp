@@ -12,6 +12,7 @@ namespace mini3d
 {
 namespace system
 {
+
     struct Event
 	{
         #include "platform/win32/unicodekeyid.inl"

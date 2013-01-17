@@ -14,6 +14,7 @@ namespace system {
 // NOTE: All ISystem implementations are singletons and the instance can be accessed via the GetInstance function.
 // You can also use the System varuable below
 
+
 struct ISystem
 {
     enum ScreenOrientation  { SCREEN_ORIENTATION_LANDSCAPE, SCREEN_ORIENTATION_PORTRAIT };
