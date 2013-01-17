@@ -30,6 +30,7 @@ struct ICompatibility
 
 	virtual unsigned int	FreeGraphicsMemory() const = 0;
 };
+
 }
 }
 

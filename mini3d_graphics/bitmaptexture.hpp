@@ -35,6 +35,7 @@ struct IBitmapTexture : public ITexture
 	virtual MipMapMode GetMipMapMode() const = 0;
 	virtual SamplerSettings GetSamplerSettings() const = 0;
 };
+
 }
 }
 

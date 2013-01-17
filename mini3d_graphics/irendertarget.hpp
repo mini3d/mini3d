@@ -30,6 +30,7 @@ struct IRenderTarget
 
 	virtual bool GetDepthTestEnabled() const = 0;
 };
+
 }
 }
 

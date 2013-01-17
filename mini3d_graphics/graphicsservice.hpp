@@ -81,6 +81,7 @@ struct IGraphicsService
 	virtual const ICompatibility* GetCompatibility() const = 0;
 
 };
+
 }
 }
 

@@ -36,6 +36,7 @@ struct ITexture
 
 	virtual SamplerSettings GetSamplerSettings() const = 0;
 };
+
 }
 }
 

@@ -24,6 +24,7 @@ struct IIndexBuffer
 	virtual unsigned int GetIndexCount() const = 0;
 	virtual DataType GetDataType() const = 0;
 };
+
 }
 }
 

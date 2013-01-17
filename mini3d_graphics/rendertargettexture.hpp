@@ -38,6 +38,7 @@ struct IRenderTargetTexture : public IRenderTarget, public ITexture
     virtual SamplerSettings GetSamplerSettings() const = 0;
     virtual MipMapMode GetMipMapMode() const = 0;
 };
+
 }
 }
 

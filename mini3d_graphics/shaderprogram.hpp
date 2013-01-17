@@ -23,6 +23,7 @@ struct IShaderProgram
 	virtual IVertexShader* GetVertexShader() const = 0;
 
 };
+
 }
 }
 

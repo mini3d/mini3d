@@ -14,5 +14,6 @@ namespace graphics {
 const char* IBitmapTexture::TYPE = "BITMAP_TEXTURE";
 const char* IRenderTargetTexture::TYPE = "RENDER_TARGET_TEXTURE";
 const char* IWindowRenderTarget::TYPE = "WINDOW_RENDER_TARGET";
+
 }
 }

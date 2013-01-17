@@ -26,6 +26,7 @@ struct IConstantBuffer
     virtual void SetData(const char* pData) = 0;
     virtual IShaderProgram* GetVertexShader() const = 0;
 };
+
 }
 }
 
