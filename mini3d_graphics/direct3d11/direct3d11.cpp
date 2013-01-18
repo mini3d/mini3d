@@ -8,6 +8,8 @@
 #ifdef _WIN32
 #ifdef MINI3D_GRAPHICSSERVICE_DIRECT3D_11
 
+#include "../common/mipmap.hpp"
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 //#include <d3d11.h>
@@ -506,18 +508,38 @@ void SetBitmap(const char* pBitmap, unsigned int width, unsigned int height, For
     }
     else // mipMapMode == MIPMAP_AUTOGENERATE
     {
-        D3D11_TEXTURE2D_DESC desc = { width, height, 1, 1, DXGI_FORMATS[(unsigned int)format], {1}, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0 };
-        //D3D11_SUBRESOURCE_DATA data = {pBitmap, width * BYTES_PER_PIXEL[(unsigned int)format], 0};
-        mini3d_assert(S_OK == pDevice->CreateTexture2D(&desc, NULL, &m_pTexture), "Creating Direct3D 11 texture failed!");
+        mini3d_assert(format == FORMAT_RGBA8UI, "Mip auto generation is only available for FORMAT_RGBA8UI");
 
-        pContext->UpdateSubresource(m_pTexture, 0, NULL, pBitmap, width * BYTES_PER_PIXEL[(unsigned int)format], 0);
+        D3D11_SUBRESOURCE_DATA* data = new D3D11_SUBRESOURCE_DATA[levelCount];
+        D3D11_SUBRESOURCE_DATA full = {pBitmap, width * 4, 0};
+        data[0] = full;
+
+        unsigned int mipMapWidth = width;
+        unsigned int mipMapHeight = height;
+        for (unsigned int i = 1; i < levelCount; ++i)
+        {
+            unsigned char* pMipMap = mini3d_GenerateMipMapBoxFilter((unsigned char*)data[i - 1].pSysMem, mipMapWidth, mipMapHeight);
+
+            mipMapWidth >>= 1;
+	        mipMapHeight >>= 1;
+
+            D3D11_SUBRESOURCE_DATA mip = { pMipMap, mipMapWidth * 4, 0 };
+            data[i] = mip;
+        }
+
+        D3D11_TEXTURE2D_DESC desc = { width, height, levelCount, 1, DXGI_FORMATS[(unsigned int)format], {1}, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0 };
+        mini3d_assert(S_OK == pDevice->CreateTexture2D(&desc, data, &m_pTexture), "Creating Direct3D 11 texture failed!");
+
+        //pContext->UpdateSubresource(m_pTexture, 0, NULL, pBitmap, width * BYTES_PER_PIXEL[(unsigned int)format], 0);
+
+        for (unsigned int i = 1; i < levelCount; ++i)
+            delete[] data[i].pSysMem;
+
+        delete[] data;
     }
 
-    D3D11_SHADER_RESOURCE_VIEW_DESC rDesc = { DXGI_FORMATS[(unsigned int)format], D3D_SRV_DIMENSION_TEXTURE2D, { 0, 1 }}; //levelCount - 1
+    D3D11_SHADER_RESOURCE_VIEW_DESC rDesc = { DXGI_FORMATS[(unsigned int)format], D3D_SRV_DIMENSION_TEXTURE2D, { 0, levelCount - 1 }}; 
     mini3d_assert(S_OK ==pDevice->CreateShaderResourceView(m_pTexture, &rDesc, &m_pShaderResourceView), "Creating Direct3D 11 Texture Shader Resource View failed!");
-
-    if (mipMapMode == MIPMAP_AUTOGENERATE)
-        pContext->GenerateMips(m_pShaderResourceView);
 
     // Set sampler state
     if (m_pSamplerState != 0)
