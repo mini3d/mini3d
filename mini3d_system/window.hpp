@@ -16,7 +16,7 @@ struct IWindow
 {
 	enum ScreenState { SCREEN_STATE_WINDOWED, SCREEN_STATE_FULLSCREEN };
 
-    static IWindow* New(const wchar_t* title, unsigned int width, unsigned int height);
+    static IWindow* New(const char* title, unsigned int width, unsigned int height);
     virtual ~IWindow() {};
 
     virtual void Show() = 0;
@@ -28,7 +28,7 @@ struct IWindow
 
     virtual void GetWindowContentSize(unsigned int &width, unsigned int &height) const = 0;
 
-    virtual const bool GetEvent(Event &ev) = 0;
+    virtual bool GetEvent(Event &ev) = 0;
 
 	virtual void* GetNativeWindow() const = 0;
 };

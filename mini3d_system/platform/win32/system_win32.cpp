@@ -136,7 +136,6 @@ public:
     int GetJoystickId(unsigned int index)                       { Lock guard(&joyCriticalSection); unsigned int count=0; for(int i=0; i<16 && count<4; ++i) if (g_joyPosResult[i] == JOYERR_NOERROR && index == count++) return i; return -1; }
     bool GetJoystickInfo(int id, JoystickInfo &info)            { Lock guard(&joyCriticalSection); info.vid = g_joyCaps[id].wMid; info.pid = g_joyCaps[id].wPid; lstrcpyn(info.name, g_joyCaps[id].szPname, 32); JOYINFO i; return joyGetPos(id, &i) == JOYERR_NOERROR; }
 
-
     System_win32() : m_screenOrientation(SCREEN_ORIENTATION_PORTRAIT), m_AppState(APP_STATE_FOREGROUND) 
     {
         timeBeginPeriod(1); // Set the timeGetTime() function call to millisecond accuracy
@@ -146,7 +145,7 @@ public:
         for (int i = 0; i < 16; ++i) { g_joyCapsResult[i] = joyGetDevCaps(i, &g_joyCaps[i], sizeof(JOYCAPS)); g_joyPosResult[i] = joyGetPos(i, &info); }
 
         // Create window that will monitor when joysticks are connected and dis-connected
-        m_hWnd = CreateWindowEx(0, L"STATIC", L"MINI3D_Joystick_window", 0, 0, 0, 0, 0, 0, 0, GetModuleHandle(NULL), 0);
+        m_hWnd = CreateWindowEx(0, "STATIC", "MINI3D_Joystick_window", 0, 0, 0, 0, 0, 0, 0, GetModuleHandle(NULL), 0);
         SetWindowLong(m_hWnd, GWL_WNDPROC, (LONG)&WindowProc);
 
         // create joystick thread
@@ -239,7 +238,7 @@ void        Timer::Sleep(uint64_t microSeconds)     { ::Sleep(DWORD(microSeconds
 
 ////////// WINDOW /////////////////////////////////////////////////////////////
 
-const WNDCLASSEXW WINDOW_CLASS_TEMPLATE =   { sizeof(WNDCLASSEX), 0, &DefWindowProc, 0, 0, GetModuleHandle(NULL), 0, LoadCursor(NULL , IDC_ARROW), 0, 0, L"mini3D_user_window" };
+const WNDCLASSEX WINDOW_CLASS_TEMPLATE =    { sizeof(WNDCLASSEX), 0, &DefWindowProc, 0, 0, GetModuleHandle(NULL), 0, LoadCursor(NULL , IDC_ARROW), 0, 0, "mini3D_user_window" };
 ATOM windowClassAtom =                      RegisterClassEx(&WINDOW_CLASS_TEMPLATE);
 
 class Window_win32 : public IWindow
@@ -253,11 +252,11 @@ public:
     
     ~Window_win32()                     { DestroyWindow(hWindow); }
 
-    Window_win32(const wchar_t* title, unsigned int width, unsigned int height)
+    Window_win32(const char* title, unsigned int width, unsigned int height)
     {
         mScreenState = SCREEN_STATE_WINDOWED;
         mini3d_assert(windowClassAtom != 0, "Failed to register window class!");
-        hWindow = CreateWindowEx(WS_EX_APPWINDOW, L"mini3D_user_window", title, WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, GetModuleHandle(NULL), 0);
+        hWindow = CreateWindowEx(WS_EX_APPWINDOW, "mini3D_user_window", title, WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, GetModuleHandle(NULL), 0);
     }
 
     void GetWindowContentSize(unsigned int &width, unsigned int &height) const
@@ -309,7 +308,7 @@ public:
 
     ///////// WINDOW MESSAGES AND EVENTS //////////////////////////////////////////
 
-    const bool GetEvent(Event &ev)
+    bool GetEvent(Event &ev)
     {
         MSG msg;
         while (PeekMessage(&msg, hWindow, 0, 0, true))
@@ -436,7 +435,7 @@ private:
 
 };
 
-IWindow* IWindow::New(const wchar_t* title, unsigned int width, unsigned int height) { return new Window_win32(title, width, height); }
+IWindow* IWindow::New(const char* title, unsigned int width, unsigned int height) { return new Window_win32(title, width, height); }
 
 
 #endif

@@ -11,6 +11,8 @@
 #include <windows.h>
 #include <GL/gl.h>
 #include "common/glext.h"
+#elif defined(__linux__) && !defined(ANDROID)
+#include <GL/gl.h>
 #endif
 
 /*

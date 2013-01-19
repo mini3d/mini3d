@@ -21,7 +21,7 @@ struct ISystem
     enum AppState           { APP_STATE_FOREGROUND, APP_STATE_BACKGROUND_VISIBLE, APP_STATE_BACKGROUND_HIDDEN, APP_STATE_TERMINATED };
     enum AppLifecycleModel  { APP_LIFECYCLE_MODEL_DESKTOP, APP_LIFECYCLE_MODEL_OS_MOBILE };
 
-    static ISystem* ISystem::GetInstance();
+    static ISystem* GetInstance();
     virtual ~ISystem() {};
 
     virtual bool GetEvent(SystemEvent &ev) = 0;
@@ -43,7 +43,7 @@ struct ISystem
     // When a graphics card is diconnected (physically removed or hung) you need to recreate your
     // graphics object and all resources created with it.
 
-    struct JoystickInfo { unsigned int vid, pid; wchar_t name[32]; };
+    struct JoystickInfo { unsigned int vid, pid; char name[32]; };
 
     virtual unsigned int GetJoystickCount() = 0;
     virtual int GetJoystickId(unsigned int index) = 0; // Returns -1 for invalid indices

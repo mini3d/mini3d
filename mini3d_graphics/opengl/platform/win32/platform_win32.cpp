@@ -36,7 +36,7 @@ public:
     
     Platform_win32() 
     { 
-	    mInternalWindow = CreateWindowEx(WS_EX_CLIENTEDGE, L"STATIC", L"Mini3DHiddenWindow", 0, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, HWND_MESSAGE, 0, GetModuleHandle(NULL), 0);
+	    mInternalWindow = CreateWindowEx(WS_EX_CLIENTEDGE, "STATIC", "Mini3DHiddenWindow", 0, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, HWND_MESSAGE, 0, GetModuleHandle(NULL), 0);
         SafeHDC hDC(mInternalWindow);
 
         int pixelFormat = ChoosePixelFormat(hDC, &defaultPixelFormatDescriptor);

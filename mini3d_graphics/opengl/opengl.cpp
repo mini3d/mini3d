@@ -11,7 +11,7 @@
 
 #include "platform/iplatform.hpp"
 #include "platform/openglwrapper.hpp"
-
+#include <cstring>
 
 void mini3d_assert(bool expression, const char* text, ...);
 
@@ -252,7 +252,7 @@ struct ShaderProgram_OpenGL : IShaderProgram
     IVertexShader* GetVertexShader() const                      { return (IVertexShader*)m_pVertexShader; }
     GLuint GetGLProgram() const                                 { return m_glProgram; }
     ActiveAttribute* GetActiveAttributes(unsigned int &count)   { count = m_activeAttributeCount; return m_pActiveAttributes; }
-    ActiveUniform* GetActiveUniforms(unsigned int &count)       { count = m_activeAttributeCount; return m_pActiveUniforms; }
+    ActiveUniform* GetActiveUniforms(unsigned int &count)       { count = m_activeUniformCount; return m_pActiveUniforms; }
 
     GLenum GetType(GLenum type)
     {
@@ -560,13 +560,14 @@ struct Texture_OpenGL { virtual GLuint GetGLTexture() const = 0; } ;
 
 struct BitmapTexture_OpenGL : IBitmapTexture, Texture_OpenGL
 {
-    uint GetWidth() const                       { return m_size.width; };
-    uint GetHeight() const                      { return m_size.height; };
-    Format GetFormat() const                    { return m_format; };
-    MipMapMode GetMipMapMode() const            { return m_mipMapMode; };
-    SamplerSettings GetSamplerSettings() const  { return m_samplerSettings; };
-    ~BitmapTexture_OpenGL()                     { glDeleteTextures(1, &m_glTexture); m_pGraphicsService->UnbindTexture(this); }
-    GLuint GetGLTexture() const                 { return m_glTexture; }
+    uint GetWidth() const                               { return m_size.width; };
+    uint GetHeight() const                              { return m_size.height; };
+    Format GetFormat() const                            { return m_format; };
+    MipMapMode GetMipMapMode() const                    { return m_mipMapMode; };
+    SamplerSettings GetSamplerSettings() const          { return m_samplerSettings; };
+    ~BitmapTexture_OpenGL()                             { glDeleteTextures(1, &m_glTexture); m_pGraphicsService->UnbindTexture(this); }
+    GLuint GetGLTexture() const                         { return m_glTexture; }
+	unsigned int GetMax(unsigned int a, unsigned int b) { return (a > b) ? a : b; }
 
     BitmapTexture_OpenGL(GraphicsService_OpenGL* pGraphics, const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, MipMapMode mipMapMode) :
         m_pGraphicsService(pGraphics)
@@ -629,7 +630,7 @@ struct BitmapTexture_OpenGL : IBitmapTexture, Texture_OpenGL
                 
                 while (mipMapWidth > 1 || mipMapHeight > 1)
                 {
-                    unsigned int sizeInBytes = max(width >> 1, 1) * max(height >> 1, 1) * mini3d_BitmapTexture_BytesPerPixel[format];
+                    unsigned int sizeInBytes = GetMax(width >> 1, 1) * GetMax(height >> 1, 1) * mini3d_BitmapTexture_BytesPerPixel[format];
                     glTexImage2D(GL_TEXTURE_2D, level, mini3d_BitmapTexture_Formats[format].internalFormat, mipMapWidth, mipMapHeight, 0, mini3d_BitmapTexture_Formats[format].format, mini3d_BitmapTexture_Formats[format].type, pBitmap);
                     pBitmap += sizeInBytes;
 
