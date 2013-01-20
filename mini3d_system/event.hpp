@@ -8,10 +8,8 @@
 
 #include "stdint.h"
 
-namespace mini3d
-{
-namespace system
-{
+namespace mini3d {
+namespace system {
 
     struct Event
 	{

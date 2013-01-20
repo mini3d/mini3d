@@ -1,5 +1,5 @@
 
-// Copyright (c) <2011> Daniel Peterson
+// Copyright (c) <2011-2013> Daniel Peterson
 // This file is part of Mini3D <www.mini3d.org>
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
@@ -9,7 +9,7 @@
 #include "../../../windowrendertarget.hpp"
 
 #include <X11/Xlib.h>
-#include <GL/gl.h>
+#include <GL/gl.h> // TODO: Can be removed?
 #include <GL/glx.h>
 
 void mini3d_assert(bool expression, const char* text, ...);
@@ -37,7 +37,7 @@ public:
         m_pDisplay = XOpenDisplay(NULL);
         m_window = DefaultRootWindow(m_pDisplay);
 
-        static const GLint attr[] = { GLX_RGBA, GLX_RED_SIZE,8, GLX_GREEN_SIZE, 8, GLX_BLUE_SIZE, 8, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, None };
+        static const GLint attr[] = { GLX_RGBA, GLX_RED_SIZE, 8, GLX_GREEN_SIZE, 8, GLX_BLUE_SIZE, 8, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, None };
 
         XVisualInfo* vi = glXChooseVisual(m_pDisplay, 0, (int*)&attr);
         m_rC = glXCreateContext(m_pDisplay, vi, NULL, GL_TRUE);
@@ -45,7 +45,6 @@ public:
         glXMakeCurrent(m_pDisplay, m_window, m_rC);    
         XFree(vi);
     }
-
 
 private:
     void CreateInternalWindow();

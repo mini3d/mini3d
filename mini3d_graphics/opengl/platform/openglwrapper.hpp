@@ -13,6 +13,8 @@
 #include "common/glext.h"
 #elif defined(__linux__) && !defined(ANDROID)
 #include <GL/gl.h>
+#elif defined(ANDROID)
+#include <GLES2/gl2.h>
 #endif
 
 /*
@@ -51,7 +53,7 @@ namespace graphics {
 
     void glClear(GLbitfield mask);
     void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
-    void glClearDepth(GLclampd depth);
+    void glClearDepth(GLclampf depth);
 
     void glShadeModel(GLenum mode);
     void glDepthFunc(GLenum func);

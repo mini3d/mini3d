@@ -1,7 +1,8 @@
 
 #ifdef __ANDROID__
 
-#include "window_android.hpp"
+#include "../../window.hpp"
+#include "../../system.hpp"
 #include "../common/synceventqueue.hpp"
 
 #include <jni.h>
@@ -22,11 +23,22 @@
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __VA_ARGS__))
 #define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "native-activity", __VA_ARGS__))
 
-using namespace mini3d::window;
-
 // TODO: Text input events are not implemented. There is no support for getting a unicode character from a key code in the NDK.
 // TODO: Joystick events are not implemented.
 
+using namespace mini3d::system;
+
+namespace mini3d {
+namespace system {
+class Window_android;
+
+}
+}
+
+////////// MINI3D MAIN THREAD FUNCTION ////////////////////////////////////////
+
+int mini3d_main(int argc, char *argv[]);
+void* start_mini3d_main(void* param) { mini3d_main(0,0); return 0; }
 
 ////////// GLOBAL VARIABLES ///////////////////////////////////////////////////
 
@@ -49,19 +61,13 @@ int INPUT_QUEUE_ID = 1;
 bool HandleEvent(AInputEvent* pEvent, Event &ev);
 
 
-////////// MINI3D MAIN THREAD FUNCTION ////////////////////////////////////////
-
-int mini3d_main(int argc, char *argv[]);
-void* start_mini3d_main(void* param) { mini3d_main(0,0); return 0; }
-
-
 ////////// ANDROID CALLBACKS //////////////////////////////////////////////////
 
 static void onStart(ANativeActivity* activity) 		{ } // Do nothing
 static void onStop(ANativeActivity* activity) 		{ } // Do nothing
 static void onResume(ANativeActivity* activity) 	{ } // Do nothing
 static void onPause(ANativeActivity* activity)  	{ SystemEvent ev = { SystemEvent::SAVE_STATE }; systemEventQueue.AddEventSync(ev); }
-static void onLowMemory(ANativeActivity* activity) 	{ SystemEvent ev = { SystemEvent::FREE_UNUSED_RESOURCES }; systemEventQueue.AddEventSync(ev); }
+static void onLowMemory(ANativeActivity* activity) 	{ } // Do nothing, you should not be wasting resources in the first place!
 
 static void* onSaveInstanceState(ANativeActivity* activity, size_t* outLen) 			{ outLen = 0; return 0; } // Do nothing
 
@@ -76,7 +82,7 @@ static void onNativeWindowDestroyed(ANativeActivity* activity, ANativeWindow* wi
 
 static void onDestroy(ANativeActivity* activity)
 {
-    SystemEvent ev = { SystemEvent::FORCE_CLOSE };
+    SystemEvent ev = { SystemEvent::TERMINATE };
     systemEventQueue.AddEventSync(ev);
 
     pthread_mutex_destroy(&mutex);
@@ -129,180 +135,207 @@ void ANativeActivity_onCreate(ANativeActivity* activity, void* savedState, size_
 }
 
 
+namespace mini3d {
+namespace system {
 
-////////// WINDOW IMPLEMENTATION //////////////////////////////////////////////
 
-struct Window_android::Internal 							{ ANativeWindow* window; };
+////////// SYSTEM /////////////////////////////////////////////////////////////
 
-int Window_android::GetMultisamples() const 				{ return 0; }
-MINI3D_WINDOW Window_android::GetWindow() const 			{ return mpI->window; }
-Window::WindowType Window_android::GetWindowType() const 	{ return mWindowType; }
-
-void Window_android::Show() 								{ } // Do nothing
-void Window_android::Hide() 								{ } // Do nothing
-
-Window::ScreenState Window_android::GetScreenState() const 	{ return mScreenState; }
-void Window_android::SetScreenStateFullscreen() 			{ mScreenState = SCREEN_STATE_FULLSCREEN; }
-void Window_android::SetScreenStateWindowed() 				{ mScreenState = SCREEN_STATE_WINDOWED; }
-
-void Window_android::GetWindowContentSize(unsigned int &width, unsigned int &height) const { width = ANativeWindow_getWidth(mpI-> window); height = ANativeWindow_getHeight(mpI-> window); }
-
-Window_android::~Window_android() 							{ ANativeWindow_release(mpI->window); delete mpI; }
-
-Window_android::Window_android(const char* title, unsigned int width, unsigned int height, WindowType windowType, unsigned int multisamples)
+class System_android : public ISystem
 {
-	mpI = new Internal();
+public:
+    
+    static System_android* GetInstance()                        { return &System; }
 
-	while(windowInstance == 0)
-		usleep(10000);
+    ScreenOrientation GetScreenOrentation() const               { return m_screenOrientation; }
+    void SetScreenOrientation(ScreenOrientation orientation)    { m_screenOrientation = orientation; }
 
-	ANativeWindow_acquire(windowInstance);
-	mpI->window = windowInstance;
-	mini3dWindow = this;
-}
+    AppState GetAppState() const                                { return m_AppState; }
+    void SetAppState(AppState state)                            { m_AppState = state; }
 
-const Event* Window_android::WaitForNextMessage()
+    AppLifecycleModel GetAppLifecycleModel() const              { return APP_LIFECYCLE_MODEL_DESKTOP; }
+
+    void Terminate()                                            { } // TODO: Implement
+
+    // JOYSTICK
+    unsigned int GetJoystickCount()                             { return 0; }
+    int GetJoystickId(unsigned int index)                       { return -1; }
+    bool GetJoystickInfo(int id, JoystickInfo &info)            { return false; }
+
+
+    System_android() : m_screenOrientation(SCREEN_ORIENTATION_PORTRAIT), m_AppState(APP_STATE_FOREGROUND) 
+    {
+    }
+
+    ~System_android() 
+    {
+    }
+
+    bool GetEvent(SystemEvent &ev)                              
+    {
+        return systemEventQueue.GetEvent(ev);
+    }
+
+private:
+    static System_android System;
+    ScreenOrientation m_screenOrientation;
+    AppState m_AppState;
+};
+
+System_android System_android::System;
+ISystem* ISystem::GetInstance() { return System_android::GetInstance(); }
+
+
+//////// WINDOW IMPLEMENTATION //////////////////////////////////////////////
+
+class Window_android : public IWindow
 {
-	AInputEvent* outEvent;
-	static Event ev;
+public:
+	int GetMultisamples() const 				{ return 0; }
+	void* GetNativeWindow() const 			    { return m_pWindow; }
 
-	for (;;)
+	void Show() 								{ } // Do nothing
+	void Hide() 								{ } // Do nothing
+
+	ScreenState GetScreenState() const 	        { return m_screenState; }
+	void SetScreenStateFullscreen() 			{ m_screenState = SCREEN_STATE_FULLSCREEN; }
+	void SetScreenStateWindowed() 				{ m_screenState = SCREEN_STATE_WINDOWED; }
+
+	void GetWindowContentSize(unsigned int &width, unsigned int &height) const { width = ANativeWindow_getWidth(m_pWindow); height = ANativeWindow_getHeight(m_pWindow); }
+
+	~Window_android() 							{ ANativeWindow_release(m_pWindow); }
+
+	Window_android(const char* title, unsigned int width, unsigned int height)
 	{
-		// check event queue
-		if (eventQueue.IsEmpty() == false)
-			return eventQueue.GetEvent();
+		while(windowInstance == 0)
+			usleep(10000);
 
-		// check input queue
-		pthread_mutex_lock(&mutex);
-		if(inputQueue && AInputQueue_hasEvents(inputQueue) > 0)
+		m_pWindow = windowInstance;
+		ANativeWindow_acquire(m_pWindow);
+
+		mini3dWindow = this;
+	}
+
+	bool GetEvent(Event &ev)
+	{
+		bool handled = false;
+
+		if (eventQueue.GetEvent(ev))
+			return true;
+
+		Lock guard(&mutex);
+		while(!handled && inputQueue && AInputQueue_hasEvents(inputQueue) > 0)
 		{
-			if (AInputQueue_getEvent(inputQueue, &outEvent) >= 0 && HandleEvent(outEvent, ev))
-				break;
-
+			AInputEvent* outEvent;
+			if (AInputQueue_getEvent(inputQueue, &outEvent) >= 0)
+				handled = HandleEvent(outEvent, ev);
 			AInputQueue_finishEvent(inputQueue, outEvent, true);
 		}
-		pthread_mutex_unlock(&mutex);
 
-		// wait a while and then try again
-		usleep(10000);
+		return handled;
 	}
 
-	AInputQueue_finishEvent(inputQueue, outEvent, true);
-	pthread_mutex_unlock(&mutex);
-	return &ev;
-}
-
-const Event* Window_android::GetNextMessage()
-{
-	static Event ev;
-    bool handled = false;
-
-    if (eventQueue.IsEmpty() == false)
-    	return eventQueue.GetEvent();
-
-    pthread_mutex_lock(&mutex);
-    if(inputQueue && AInputQueue_hasEvents(inputQueue) > 0)
+	bool HandleEvent(AInputEvent* pEvent, Event &ev)
 	{
-    	AInputEvent* outEvent;
-    	if (AInputQueue_getEvent(inputQueue, &outEvent) >= 0) handled = HandleEvent(outEvent, ev);
-    	AInputQueue_finishEvent(inputQueue, outEvent, true);
-	}
+		Event zero = {};
+		ev = zero;
 
-    pthread_mutex_unlock(&mutex);
+		switch (AInputEvent_getType(pEvent))
+		{
+			case AINPUT_EVENT_TYPE_KEY: {
 
-	return (handled) ? &ev : 0;
-}
-
-bool HandleEvent(AInputEvent* pEvent, Event &ev)
-{
-	Event zero = {};
-	ev = zero;
-
-	switch (AInputEvent_getType(pEvent))
-	{
-		case AINPUT_EVENT_TYPE_KEY: {
-
-			switch(AKeyEvent_getAction(pEvent)) {
-				case AKEY_EVENT_ACTION_DOWN: ev.type = Event::KEY_DOWN; break;
-				case AKEY_EVENT_ACTION_UP: ev.type = Event::KEY_UP; break;
-				default: return false; // TODO: Handle AKEY_EVENT_ACTION_MULTIPLE?
-			}
-
-			uint32_t metaState = AKeyEvent_getMetaState(pEvent);
-
-			Event::ModifierKeys modifier =
-					(metaState & AMETA_ALT_ON == AMETA_ALT_ON) ? Event::MODIFIER_ALT : Event::MODIFIER_NONE |
-					(metaState & AMETA_SHIFT_ON == AMETA_SHIFT_ON) ? Event::MODIFIER_SHIFT : Event::MODIFIER_NONE;
-
-			Event::Key key = { modifier, AKeyEvent_getKeyCode(pEvent) };
-			ev.key = key;
-
-			return true;
-		}
-		case AINPUT_EVENT_TYPE_MOTION: {
-
-			uint32_t type = AMotionEvent_getAction(pEvent) & AMOTION_EVENT_ACTION_MASK;
-			uint32_t index = (AMotionEvent_getAction(pEvent) & AMOTION_EVENT_ACTION_MASK) >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT;
-
-			switch(type)
-			{
-				case AMOTION_EVENT_ACTION_DOWN: {
-					ev.type = Event::MOUSE_DOWN;
-					uint32_t id = AMotionEvent_getPointerId(pEvent, 0);
-					Event::MouseButton mouseButton = { Event::LEFT, (int)AMotionEvent_getX(pEvent, 0), (int)AMotionEvent_getY(pEvent, 0), id };
-					ev.mouseButton = mouseButton;
-					return true;
+				switch(AKeyEvent_getAction(pEvent)) {
+					case AKEY_EVENT_ACTION_DOWN: ev.type = Event::KEY_DOWN; break;
+					case AKEY_EVENT_ACTION_UP: ev.type = Event::KEY_UP; break;
+					default: return false; // TODO: Handle AKEY_EVENT_ACTION_MULTIPLE?
 				}
-				case AMOTION_EVENT_ACTION_MOVE: {
-					// NOTE: Prior to Android 4.0 (API level 14) there is no way to detect mouse hover movements (mouse move without mouse button pressed)
-					// so this is not implemented here!
 
-					// One Android motion event contains the location of all active touch points (multi-touch). But mini3d event system handles them
-					// separately one by one...
-					// We set the event given to the function to the first of the touch points in the Android event (there is always at least one...)
-					// All additional touch points will be added to the window event queue as separate events.
-					ev.type = Event::MOUSE_MOVE;
-					uint32_t id = AMotionEvent_getPointerId(pEvent, 0);
-					Event::MouseMove mouseMove = { Event::LEFT, (int)AMotionEvent_getX(pEvent, 0), (int)AMotionEvent_getY(pEvent, 0), id };
-					ev.mouseMove = mouseMove;
+				uint32_t metaState = AKeyEvent_getMetaState(pEvent);
 
-					// Add the rest of the touch points to the window event queue.
-					uint32_t count = AMotionEvent_getPointerCount(pEvent);
-					for (uint32_t index = 0; index < count; ++index)
-					{
-						Event ev = { Event::MOUSE_MOVE };
-						uint32_t id = AMotionEvent_getPointerId(pEvent, index);
-						Event::MouseMove mouseMove = { Event::LEFT, (int)AMotionEvent_getX(pEvent, index), (int)AMotionEvent_getY(pEvent, index), id };
-						eventQueue.AddEvent(ev);
+				Event::ModifierKeys modifier =
+						(metaState & AMETA_ALT_ON == AMETA_ALT_ON) ? Event::MODIFIER_ALT : Event::MODIFIER_NONE |
+						(metaState & AMETA_SHIFT_ON == AMETA_SHIFT_ON) ? Event::MODIFIER_SHIFT : Event::MODIFIER_NONE;
+
+				Event::Key key = { modifier, AKeyEvent_getKeyCode(pEvent) };
+				ev.key = key;
+
+				return true;
+			}
+			case AINPUT_EVENT_TYPE_MOTION: {
+
+				uint32_t type = AMotionEvent_getAction(pEvent) & AMOTION_EVENT_ACTION_MASK;
+				uint32_t index = (AMotionEvent_getAction(pEvent) & AMOTION_EVENT_ACTION_MASK) >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT;
+
+				switch(type)
+				{
+					case AMOTION_EVENT_ACTION_DOWN: {
+						ev.type = Event::MOUSE_DOWN;
+						uint32_t id = AMotionEvent_getPointerId(pEvent, 0);
+						Event::MouseButton mouseButton = { Event::LEFT, (int)AMotionEvent_getX(pEvent, 0), (int)AMotionEvent_getY(pEvent, 0), id };
+						ev.mouseButton = mouseButton;
+						return true;
 					}
-					return true;
-				}
-				case AMOTION_EVENT_ACTION_UP:
-				case AMOTION_EVENT_ACTION_CANCEL: { // TODO: Should be separate event type!
-					ev.type = Event::MOUSE_UP;
-					uint32_t id = AMotionEvent_getPointerId(pEvent, 0);
-					Event::MouseButton mouseButton = { Event::LEFT, (int)AMotionEvent_getX(pEvent, 0), (int)AMotionEvent_getY(pEvent, 0), id };
-					ev.mouseButton = mouseButton;
-					return true;
-				}
-				case AMOTION_EVENT_ACTION_POINTER_UP: {
-					ev.type = Event::MOUSE_UP;
-					uint32_t id = AMotionEvent_getPointerId(pEvent, index);
-					Event::MouseButton mouseButton = { Event::LEFT, (int)AMotionEvent_getX(pEvent, index), (int)AMotionEvent_getY(pEvent, index), id };
-					ev.mouseButton = mouseButton;
-					return true;
-				}
-				case AMOTION_EVENT_ACTION_POINTER_DOWN: {
-					ev.type = Event::MOUSE_DOWN;
-					uint32_t id = AMotionEvent_getPointerId(pEvent, index);
-					Event::MouseButton mouseButton = { Event::LEFT, (int)AMotionEvent_getX(pEvent, index), (int)AMotionEvent_getY(pEvent, index), id };
-					ev.mouseButton = mouseButton;
-					return true;
+					case AMOTION_EVENT_ACTION_MOVE: {
+						// NOTE: Prior to Android 4.0 (API level 14) there is no way to detect mouse hover movements (mouse move without mouse button pressed)
+						// so this is not implemented here!
+
+						// One Android motion event contains the location of all active touch points (multi-touch). But mini3d event system handles them
+						// separately one by one...
+						// We set the event given to the function to the first of the touch points in the Android event (there is always at least one...)
+						// All additional touch points will be added to the window event queue as separate events.
+						ev.type = Event::MOUSE_MOVE;
+						uint32_t id = AMotionEvent_getPointerId(pEvent, 0);
+						Event::MouseMove mouseMove = { Event::LEFT, (int)AMotionEvent_getX(pEvent, 0), (int)AMotionEvent_getY(pEvent, 0), id };
+						ev.mouseMove = mouseMove;
+
+						// Add the rest of the touch points to the window event queue.
+						uint32_t count = AMotionEvent_getPointerCount(pEvent);
+						for (uint32_t index = 0; index < count; ++index)
+						{
+							Event ev = { Event::MOUSE_MOVE };
+							uint32_t id = AMotionEvent_getPointerId(pEvent, index);
+							Event::MouseMove mouseMove = { Event::LEFT, (int)AMotionEvent_getX(pEvent, index), (int)AMotionEvent_getY(pEvent, index), id };
+							eventQueue.AddEvent(ev);
+						}
+						return true;
+					}
+					case AMOTION_EVENT_ACTION_UP:
+					case AMOTION_EVENT_ACTION_CANCEL: { // TODO: Should be separate event type!
+						ev.type = Event::MOUSE_UP;
+						uint32_t id = AMotionEvent_getPointerId(pEvent, 0);
+						Event::MouseButton mouseButton = { Event::LEFT, (int)AMotionEvent_getX(pEvent, 0), (int)AMotionEvent_getY(pEvent, 0), id };
+						ev.mouseButton = mouseButton;
+						return true;
+					}
+					case AMOTION_EVENT_ACTION_POINTER_UP: {
+						ev.type = Event::MOUSE_UP;
+						uint32_t id = AMotionEvent_getPointerId(pEvent, index);
+						Event::MouseButton mouseButton = { Event::LEFT, (int)AMotionEvent_getX(pEvent, index), (int)AMotionEvent_getY(pEvent, index), id };
+						ev.mouseButton = mouseButton;
+						return true;
+					}
+					case AMOTION_EVENT_ACTION_POINTER_DOWN: {
+						ev.type = Event::MOUSE_DOWN;
+						uint32_t id = AMotionEvent_getPointerId(pEvent, index);
+						Event::MouseButton mouseButton = { Event::LEFT, (int)AMotionEvent_getX(pEvent, index), (int)AMotionEvent_getY(pEvent, index), id };
+						ev.mouseButton = mouseButton;
+						return true;
+					}
 				}
 			}
 		}
+		return false;
 	}
-	return false;
+
+private:
+	ScreenState m_screenState;
+
+    ANativeWindow* m_pWindow;
+};
+
+IWindow* IWindow::New(const char* title, unsigned int width, unsigned int height) { return new Window_android(title, width, height); }
+
+}
 }
 
 

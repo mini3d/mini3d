@@ -12,6 +12,7 @@
 #include "platform/iplatform.hpp"
 #include "platform/openglwrapper.hpp"
 #include <cstring>
+#include <cstdlib>
 
 void mini3d_assert(bool expression, const char* text, ...);
 
@@ -53,8 +54,9 @@ const uint MAX_ACTIVE_ATTRIBUTE_INDICES = 32; // How many attributes you can use
 
 const unsigned int mini3d_IndexBuffer_OpenGL_BytesPerIndex[] = { 2, 4 };
 
+// TODO: move these to where they are used!
 struct OpenglBitmapFormat { GLuint internalFormat; GLenum format; GLenum type; };
-OpenglBitmapFormat mini3d_BitmapTexture_Formats[] = { {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE}, {GL_RGBA16, GL_RGBA, GL_UNSIGNED_SHORT}, {GL_R16UI, GL_RED, GL_FLOAT}, {GL_R32F, GL_RED, GL_FLOAT}, { GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, GL_RGBA, GL_UNSIGNED_BYTE} };
+OpenglBitmapFormat mini3d_BitmapTexture_Formats[] = { {GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0} };
 unsigned int mini3d_BitmapTexture_BytesPerPixel[] = { 4, 8, 2, 4, 4 };
 
 
@@ -245,8 +247,8 @@ private:
 
 struct ShaderProgram_OpenGL : IShaderProgram
 {
-    struct ActiveAttribute { const char* name; GLint location; GLint size; GLenum type; unsigned int count; }; 
-    struct ActiveUniform   { const char* name; GLint location; GLint size; GLenum type; }; 
+    struct ActiveAttribute { char* name; GLint location; GLint size; GLenum type; }; 
+    struct ActiveUniform   { char* name; GLint location; GLint size; GLenum type; }; 
 
     IPixelShader* GetPixelShader() const                        { return (IPixelShader*)m_pPixelShader; }
     IVertexShader* GetVertexShader() const                      { return (IVertexShader*)m_pVertexShader; }
@@ -274,7 +276,7 @@ struct ShaderProgram_OpenGL : IShaderProgram
         return 0;
     }
 
-    GLenum GetSize(GLenum type)
+    GLint GetSize(GLenum type)
     {
         switch (type)
         {
@@ -324,7 +326,7 @@ struct ShaderProgram_OpenGL : IShaderProgram
             ActiveAttribute att = { strdup(name), glGetAttribLocation(m_glProgram, name), GetSize(type), GetType(type) };
             m_pActiveAttributes[i] = att;
 
-            printf("Attribute Name: %s, Type: %d, Location: %d\n", name, type, glGetAttribLocation(m_glProgram, name));
+            printf("Attribute Name: %s, Type: %d, Location: %d, Size:%d\n", name, type, glGetAttribLocation(m_glProgram, name), size);
         }
         delete[] name;
 
@@ -342,7 +344,7 @@ struct ShaderProgram_OpenGL : IShaderProgram
             ActiveUniform uni = { strdup(name), glGetUniformLocation(m_glProgram, name), size, type };
             m_pActiveUniforms[i] = uni;
 
-            printf("Uniform Name: %s, Type: %d, Location: %d\n", name, type, glGetUniformLocation(m_glProgram, name));
+            printf("Uniform Name: %s, Type: %d, Location: %d, Size:%d\n", name, type, glGetUniformLocation(m_glProgram, name), size);
         }
         delete[] name;
 
@@ -356,6 +358,12 @@ struct ShaderProgram_OpenGL : IShaderProgram
         if (m_pGraphicsService->GetShaderProgram() == this) 
             m_pGraphicsService->SetShaderProgram(0); 
     
+        for (GLint i = 0; i < m_activeAttributeCount; ++i)
+            free(m_pActiveAttributes[i].name);
+
+        for (GLint i = 0; i < m_activeUniformCount; ++i)
+            free(m_pActiveUniforms[i].name);
+
         delete[] m_pActiveAttributes; 
         delete[] m_pActiveUniforms;
     }

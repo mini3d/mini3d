@@ -8,7 +8,6 @@
 
 #include "event.hpp"
 
-
 namespace mini3d {
 namespace system {
 

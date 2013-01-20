@@ -15,7 +15,7 @@
 #include <pthread.h>
 
 namespace mini3d {
-namespace window {
+namespace system {
 
 template <typename EventType>
 struct EventQueue
@@ -30,9 +30,9 @@ struct EventQueue
     void AddEvent(EventType &ev)        { Lock guard(&mutex); if (c < SIZE - 1) { mpEvents[w] = ev; ++w %= SIZE; ++c; } }
     void AddEventSync(EventType &ev)    { Lock guard(&mutex); if (c < SIZE - 1) { mpEvents[w] = ev; ++w %= SIZE; ++c; } pthread_cond_wait(&cond, &mutex); }
 
-    const EventType* GetEvent()         { Lock guard(&mutex); if (c > 0) { EventType* ev = &mpEvents[(SIZE + w - c--) % SIZE]; return ev; } pthread_cond_signal(&cond); return 0; }
+    const bool GetEvent(EventType &ev)  { Lock guard(&mutex); if (c > 0) { ev = mpEvents[(SIZE + w - c--) % SIZE]; return true; } pthread_cond_signal(&cond); return false; }
 
-    bool IsEmpty()                      { return c == 0; }
+    bool IsEmpty()                      { Lock guard(&mutex); return c == 0; }
 
     EventType mpEvents[SIZE];
     int c, w;
