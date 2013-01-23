@@ -630,7 +630,6 @@ public:
         mini3d_assert(width >= 64, "Setting a Bitmap Texture to a height less than 64!");
         mini3d_assert(height >= 64, "Setting a Bitmap Texture to a width less than 64!");
         mini3d_assert(samplerSettings.mipMapMode != SamplerSettings::MIPMAP_MANUAL, "Manual mip-map mode is not available for render target textures!");
-
         // TODO: Safe release and null!
         if (m_pTexture != 0)
         {
@@ -679,16 +678,15 @@ public:
         D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc = { textureDesc.Format, D3D11_SRV_DIMENSION_TEXTURE2D, { 0, desc.MipLevels }};
 	    mini3d_assert(S_OK == pDevice->CreateShaderResourceView(m_pTexture, &shaderResourceViewDesc, &m_pShaderResourceView), "Creating Direct3D 11 Render Target Texture Shader Resource View failed!");
 
-        if (m_depthTestEnabled)
+        if (depthTestEnabled)
         {
             ID3D11Device* pDevice = m_pGraphicsService->GetDevice();
             D3D11_TEXTURE2D_DESC desc = { width, height, 1, 1, DXGI_FORMAT_D24_UNORM_S8_UINT, {1}, D3D11_USAGE_DEFAULT, D3D11_BIND_DEPTH_STENCIL };
             mini3d_assert(S_OK == pDevice->CreateTexture2D(&desc, NULL, &m_pDepthStencilTexture), "Unable to create depth stencil texture!");
-            
+
             D3D11_DEPTH_STENCIL_VIEW_DESC viewDesc = { DXGI_FORMAT_D24_UNORM_S8_UINT, D3D11_DSV_DIMENSION_TEXTURE2D }; // Texture2D.MipSlice will be zero initialized
             mini3d_assert(S_OK == pDevice->CreateDepthStencilView(m_pDepthStencilTexture, &viewDesc, &m_pDepthStencilView), "Unable to create depth stencil view!");
         }
-
 
         // Set sampler state
         if (m_pSamplerState != 0)

@@ -20,8 +20,7 @@ struct IRenderTargetTexture : public IRenderTarget, public ITexture
     static const char* TYPE;
     virtual const char* GetType() const { return TYPE; }
 
-    // Formats named depth generate depth-only textures (used for shadow maps and the like)
-    enum Format { FORMAT_RGBA8UI = 0, FORMAT_RGB8UI = 1, FORMAT_DEPTH_R32UI = 2};
+    enum Format { FORMAT_RGBA8UI = 0, FORMAT_RGB8UI = 1 };
 
 	static IRenderTargetTexture* New(IGraphicsService* pGraphics, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled);
     virtual ~IRenderTargetTexture() {};
