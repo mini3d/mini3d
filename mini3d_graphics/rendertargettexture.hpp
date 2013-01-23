@@ -20,12 +20,13 @@ struct IRenderTargetTexture : public IRenderTarget, public ITexture
     static const char* TYPE;
     virtual const char* GetType() const { return TYPE; }
 
-    enum Format { FORMAT_RGBA8UI, FORMAT_RGBA16UI, FORMAT_R16I, FORMAT_R32F };
+    // Formats named depth generate depth-only textures (used for shadow maps and the like)
+    enum Format { FORMAT_RGBA8UI = 0, FORMAT_RGB8UI = 1, FORMAT_DEPTH_R32UI = 2};
 
-	static IRenderTargetTexture* New(IGraphicsService* pGraphics, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled, MipMapMode mipMapCount = MIPMAP_AUTOGENERATE);
+	static IRenderTargetTexture* New(IGraphicsService* pGraphics, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled);
     virtual ~IRenderTargetTexture() {};
     
-	virtual void SetRenderTargetTexture(unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled, MipMapMode mipMapMode = MIPMAP_AUTOGENERATE) = 0;
+	virtual void SetRenderTargetTexture(unsigned int width, unsigned int height, Format format = FORMAT_RGBA8UI, SamplerSettings samplerSettings = SAMPLER_SETTINGS_DEFAULT, bool depthTestEnabled = true) = 0;
 
 	virtual unsigned int GetWidth() const = 0;
 	virtual unsigned int GetHeight() const = 0;
@@ -36,7 +37,6 @@ struct IRenderTargetTexture : public IRenderTarget, public ITexture
     virtual Format GetFormat() const = 0;
 	virtual bool GetDepthTestEnabled() const = 0;
     virtual SamplerSettings GetSamplerSettings() const = 0;
-    virtual MipMapMode GetMipMapMode() const = 0;
 };
 
 }

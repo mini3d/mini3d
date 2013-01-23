@@ -19,20 +19,20 @@ struct IBitmapTexture : public ITexture
     static const char* TYPE;
     virtual const char* GetType() const { return TYPE; }
 
-	enum Format { FORMAT_RGBA8UI, FORMAT_RGBA16UI, FORMAT_R16I, FORMAT_R32F };
+    // TODO: Compressed texture formats BC1, ETC1, PVRTC_RGB_2BPP
+	enum Format { FORMAT_RGBA8UI = 0 };
 
-    static IBitmapTexture* New(IGraphicsService* pGraphics, const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, MipMapMode mipMapMode = MIPMAP_AUTOGENERATE);
+    static IBitmapTexture* New(IGraphicsService* pGraphics, const char* pBitmap, unsigned int width, unsigned int height, Format format = FORMAT_RGBA8UI, SamplerSettings samplerSettings = SAMPLER_SETTINGS_DEFAULT);
  	virtual ~IBitmapTexture() {};
 
     // pBitmap is a pointer to a raw pixel buffer with the same format as the requested texture format.
     // When using MipMapMode MIPMAP_MANUAL, all additional mip-map levels are expected to be appended in ascending order after the base level texture in pBitmap.
-    virtual void SetBitmap(const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, MipMapMode mipMapMode = MIPMAP_AUTOGENERATE) = 0;
+    virtual void SetBitmap(const char* pBitmap, unsigned int width, unsigned int height, Format format = FORMAT_RGBA8UI, SamplerSettings samplerSettings = SAMPLER_SETTINGS_DEFAULT) = 0;
 
     virtual unsigned int GetWidth() const = 0;
 	virtual unsigned int GetHeight() const = 0;
 
     virtual Format GetFormat() const = 0;
-	virtual MipMapMode GetMipMapMode() const = 0;
 	virtual SamplerSettings GetSamplerSettings() const = 0;
 };
 

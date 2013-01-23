@@ -16,26 +16,31 @@ struct ITexture
 {
     virtual const char* GetType() const = 0;
 
-    enum MipMapMode { MIPMAP_NONE, MIPMAP_MANUAL, MIPMAP_AUTOGENERATE};
-
 	struct SamplerSettings
 	{
 		enum WrapMode { WRAP_CLAMP, WRAP_TILE };
 		enum SampleMode { SAMPLE_NEAREST, SAMPLE_LINEAR };
+        enum MipMapMode { MIPMAP_NONE, MIPMAP_MANUAL, MIPMAP_AUTOGENERATE};
 
 		WrapMode wrapMode;
 		SampleMode sampleMode;
+        MipMapMode mipMapMode;
 	};
+    
+
+    static const SamplerSettings DEFAULT_SAMPLER_SETTINGS;
 
 	virtual ~ITexture(void) {};
 
 	virtual unsigned int GetWidth() const = 0;
 	virtual unsigned int GetHeight() const = 0;
 
-	virtual MipMapMode GetMipMapMode() const = 0;
-
 	virtual SamplerSettings GetSamplerSettings() const = 0;
 };
+
+// TODO: Move to ITexture somehow without having to split initialization!
+const ITexture::SamplerSettings SAMPLER_SETTINGS_DEFAULT = { ITexture::SamplerSettings::WRAP_TILE, ITexture::SamplerSettings::SAMPLE_LINEAR, ITexture::SamplerSettings::MIPMAP_AUTOGENERATE };
+
 
 }
 }

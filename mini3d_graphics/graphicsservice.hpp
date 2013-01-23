@@ -7,8 +7,8 @@
 #define MINI3D_IGRAPHICSSERVICE_H
 
 // Decides what implementation to use for graphcis
-//#define MINI3D_GRAPHICSSERVICE_DIRECT3D_11
-#define MINI3D_GRAPHICSSERVICE_OPENGL
+#define MINI3D_GRAPHICSSERVICE_DIRECT3D_11
+//#define MINI3D_GRAPHICSSERVICE_OPENGL
 
 // TODO: When a resource is set. it should be tested if it needs to be reloaded. if an out of memory error occurs then the resource might still be loadable at a later time, without altering any parameters.
 

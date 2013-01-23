@@ -571,21 +571,20 @@ struct BitmapTexture_OpenGL : IBitmapTexture, Texture_OpenGL
     uint GetWidth() const                               { return m_size.width; };
     uint GetHeight() const                              { return m_size.height; };
     Format GetFormat() const                            { return m_format; };
-    MipMapMode GetMipMapMode() const                    { return m_mipMapMode; };
     SamplerSettings GetSamplerSettings() const          { return m_samplerSettings; };
     ~BitmapTexture_OpenGL()                             { glDeleteTextures(1, &m_glTexture); m_pGraphicsService->UnbindTexture(this); }
     GLuint GetGLTexture() const                         { return m_glTexture; }
 	unsigned int GetMax(unsigned int a, unsigned int b) { return (a > b) ? a : b; }
 
-    BitmapTexture_OpenGL(GraphicsService_OpenGL* pGraphics, const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, MipMapMode mipMapMode) :
+    BitmapTexture_OpenGL(GraphicsService_OpenGL* pGraphics, const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings) :
         m_pGraphicsService(pGraphics)
     {
         glGenTextures(1, &m_glTexture);
 
-        SetBitmap(pBitmap, width, height, format, samplerSettings, mipMapMode);
+        SetBitmap(pBitmap, width, height, format, samplerSettings);
     }
 
-    void SetBitmap(const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, MipMapMode mipMapMode)
+    void SetBitmap(const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings)
     {
         mini3d_assert(pBitmap != 0, "Setting a Bitmap Texture with a NULL data pointer!");
         mini3d_assert((width & (width - 1)) == 0, "Setting a Bitmap Texture to a non power of two width!");
@@ -612,25 +611,25 @@ struct BitmapTexture_OpenGL : IBitmapTexture, Texture_OpenGL
         switch(samplerSettings.sampleMode)
         {
         case SamplerSettings::SAMPLE_LINEAR:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (mipMapMode == MIPMAP_NONE) ? GL_LINEAR : GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (samplerSettings.mipMapMode == SamplerSettings::MIPMAP_NONE) ? GL_LINEAR : GL_LINEAR_MIPMAP_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             break;
         case SamplerSettings::SAMPLE_NEAREST:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (mipMapMode == MIPMAP_NONE) ? GL_NEAREST : GL_NEAREST_MIPMAP_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (samplerSettings.mipMapMode == SamplerSettings::MIPMAP_NONE) ? GL_NEAREST : GL_NEAREST_MIPMAP_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             break;
         }
 
-        switch(mipMapMode)
+        switch(samplerSettings.mipMapMode)
         {
-            case MIPMAP_NONE:
+            case SamplerSettings::MIPMAP_NONE:
                 glTexImage2D(GL_TEXTURE_2D, 0, mini3d_BitmapTexture_Formats[format].internalFormat, width, height, 0, mini3d_BitmapTexture_Formats[format].format, mini3d_BitmapTexture_Formats[format].type, pBitmap);
                 break;
-            case MIPMAP_AUTOGENERATE:
+            case SamplerSettings::MIPMAP_AUTOGENERATE:
                 glTexImage2D(GL_TEXTURE_2D, 0, mini3d_BitmapTexture_Formats[format].internalFormat, width, height, 0, mini3d_BitmapTexture_Formats[format].format, mini3d_BitmapTexture_Formats[format].type, pBitmap);
                 glGenerateMipmap(GL_TEXTURE_2D);
                 break;
-            case MIPMAP_MANUAL: {
+            case SamplerSettings::MIPMAP_MANUAL: {
 
                 unsigned int level = 0;
                 unsigned int mipMapWidth = width;
@@ -664,12 +663,10 @@ struct BitmapTexture_OpenGL : IBitmapTexture, Texture_OpenGL
         m_samplerSettings = samplerSettings;
         m_size.width = width;
         m_size.height = height;
-        m_mipMapMode = mipMapMode;
     }
 
 private:
 	Size m_size;
-    MipMapMode m_mipMapMode;
 	Format m_format;
 	SamplerSettings m_samplerSettings;
 	GLuint m_glTexture;
@@ -686,7 +683,6 @@ struct RenderTargetTexture_OpenGL : IRenderTargetTexture, Texture_OpenGL
     uint GetHeight() const                      { return size.height; }
     Viewport GetViewport() const                { Viewport v = {0,0,0,0}; return v; }; // TODO: Proper values :)
     void SetViewport(Viewport viewport)         { }; // TODO: Do something :)
-    MipMapMode GetMipMapMode() const            { return m_mipMapMode; };
     inline Format GetFormat() const             { return m_format; };
     SamplerSettings GetSamplerSettings() const  { return m_samplerSettings; };
     bool GetDepthTestEnabled() const            { return m_depthTestEnabled; };
@@ -696,17 +692,17 @@ struct RenderTargetTexture_OpenGL : IRenderTargetTexture, Texture_OpenGL
     GLuint GetGLFramebuffer() const             { return m_glFramebuffer; }
     ~RenderTargetTexture_OpenGL()               { glDeleteFramebuffers(1, &m_glFramebuffer); glDeleteTextures(1, &m_glTexture); glDeleteRenderbuffers(1, &m_glDepthStencil); m_pGraphicsService->UnbindTexture(this); }
 
-    RenderTargetTexture_OpenGL(GraphicsService_OpenGL* pGraphicsService, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled, MipMapMode mipMapMode)
+    RenderTargetTexture_OpenGL(GraphicsService_OpenGL* pGraphicsService, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled)
     {
         m_pGraphicsService = pGraphicsService;
         glGenFramebuffers(1, &m_glFramebuffer);
         glGenTextures(1, &m_glTexture);
         glGenRenderbuffers(1, &m_glDepthStencil);
 
-        SetRenderTargetTexture(width, height, format, samplerSettings, depthTestEnabled, mipMapMode);
+        SetRenderTargetTexture(width, height, format, samplerSettings, depthTestEnabled);
     }
 
-    void SetRenderTargetTexture(unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled, MipMapMode mipMapMode)
+    void SetRenderTargetTexture(unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled)
     {
         mini3d_assert((width & (width - 1)) == 0, "Setting a Bitmap Texture to a non power of two width!");
         mini3d_assert((height & (height - 1)) == 0, "Setting a Bitmap Texture to a non power of two height!");
@@ -732,11 +728,11 @@ struct RenderTargetTexture_OpenGL : IRenderTargetTexture, Texture_OpenGL
         switch(samplerSettings.sampleMode)
         {
         case SamplerSettings::SAMPLE_LINEAR:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (mipMapMode == MIPMAP_NONE) ? GL_LINEAR : GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (samplerSettings.mipMapMode == SamplerSettings::MIPMAP_NONE) ? GL_LINEAR : GL_LINEAR_MIPMAP_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             break;
         case SamplerSettings::SAMPLE_NEAREST:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (mipMapMode == MIPMAP_NONE) ? GL_NEAREST : GL_NEAREST_MIPMAP_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (samplerSettings.mipMapMode == SamplerSettings::MIPMAP_NONE) ? GL_NEAREST : GL_NEAREST_MIPMAP_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             break;
         }
@@ -767,7 +763,6 @@ struct RenderTargetTexture_OpenGL : IRenderTargetTexture, Texture_OpenGL
         m_format = format;
         m_depthTestEnabled = depthTestEnabled;
         m_samplerSettings = samplerSettings;
-        m_mipMapMode = mipMapMode;
         m_isMipMapDirty = true;
     }
 
@@ -782,7 +777,6 @@ struct RenderTargetTexture_OpenGL : IRenderTargetTexture, Texture_OpenGL
 
 private:
     Size size;
-  	MipMapMode m_mipMapMode;
 	IRenderTargetTexture::Format m_format;
 	ITexture::SamplerSettings m_samplerSettings;
 	bool m_depthTestEnabled;
@@ -987,7 +981,7 @@ private:
                 RenderTargetTexture_OpenGL* pRenderTargetTexture = (RenderTargetTexture_OpenGL*)pTexture;
                 glBindTexture(GL_TEXTURE_2D, pRenderTargetTexture->GetGLTexture());
 
-                if (pRenderTargetTexture->GetMipMapMode() == ITexture::MIPMAP_AUTOGENERATE && pRenderTargetTexture->GetIsMipMapDirty())
+                if (pRenderTargetTexture->GetSamplerSettings().mipMapMode == ITexture::SamplerSettings::MIPMAP_AUTOGENERATE && pRenderTargetTexture->GetIsMipMapDirty())
                 {
                     glGenerateMipmap(GL_TEXTURE_2D);
                     pRenderTargetTexture->SetIsMipMapDirty(false);
@@ -1218,9 +1212,9 @@ IPixelShader* IPixelShader::New(IGraphicsService* pGraphics, const char* pShader
 IVertexShader* IVertexShader::New(IGraphicsService* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes, bool precompiled) { return new GraphicsService_OpenGL::VertexShader_OpenGL((GraphicsService_OpenGL*)pGraphics, pShaderBytes, sizeInBytes); }
 IShaderProgram* IShaderProgram::New(IGraphicsService* pGraphics, IVertexShader* pVertexShader, IPixelShader* pPixelShader) { return new GraphicsService_OpenGL::ShaderProgram_OpenGL((GraphicsService_OpenGL*)pGraphics, pVertexShader, pPixelShader); }
 
-IRenderTargetTexture* IRenderTargetTexture::New(IGraphicsService* pGraphics, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled, MipMapMode mipMapMode) { return new GraphicsService_OpenGL::RenderTargetTexture_OpenGL((GraphicsService_OpenGL*)pGraphics, width, height, format, samplerSettings, depthTestEnabled, mipMapMode); }
+IRenderTargetTexture* IRenderTargetTexture::New(IGraphicsService* pGraphics, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled) { return new GraphicsService_OpenGL::RenderTargetTexture_OpenGL((GraphicsService_OpenGL*)pGraphics, width, height, format, samplerSettings, depthTestEnabled); }
 IWindowRenderTarget* IWindowRenderTarget::New(IGraphicsService* pGraphics, void* pNativeWindow, bool depthTestEnabled) { return new GraphicsService_OpenGL::WindowRenderTarget_OpenGL((GraphicsService_OpenGL*)pGraphics, pNativeWindow, depthTestEnabled); }
-IBitmapTexture* IBitmapTexture::New(IGraphicsService* pGraphics, const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, MipMapMode mipMapMode) { return new GraphicsService_OpenGL::BitmapTexture_OpenGL((GraphicsService_OpenGL*) pGraphics, pBitmap, width, height, format, samplerSettings, mipMapMode); }
+IBitmapTexture* IBitmapTexture::New(IGraphicsService* pGraphics, const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings) { return new GraphicsService_OpenGL::BitmapTexture_OpenGL((GraphicsService_OpenGL*) pGraphics, pBitmap, width, height, format, samplerSettings); }
 
 IConstantBuffer* IConstantBuffer::New(IGraphicsService* pGraphics, unsigned int sizeInBytes, IShaderProgram* pShader, const char** names, unsigned int nameCount) { return new GraphicsService_OpenGL::ConstantBuffer_OpenGL((GraphicsService_OpenGL*)pGraphics, sizeInBytes, pShader, names, nameCount); }
 IShaderInputLayout* IShaderInputLayout::New(IGraphicsService* pGraphics, IShaderProgram* pShader, InputElement* pElements, unsigned int count) { return new GraphicsService_OpenGL::ShaderInputLayout_OpenGL((GraphicsService_OpenGL*)pGraphics, pShader, pElements, count); }

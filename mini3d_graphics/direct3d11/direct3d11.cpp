@@ -424,20 +424,19 @@ public:
 
 unsigned int GetWidth() const                           { return m_width; }
 unsigned int GetHeight() const                          { return m_height; }
-MipMapMode GetMipMapMode() const                        { return m_mipMapMode; }
 Format GetFormat() const                                { return m_format; }
 SamplerSettings GetSamplerSettings() const              { return m_samplerSettings; }
 ID3D11SamplerState* GetSamplerState() const             { return m_pSamplerState; }
 ID3D11ShaderResourceView* GetShaderResourceView() const { return m_pShaderResourceView; }
 ~BitmapTexture_D3D11()                                  { Unload(); }
 
-BitmapTexture_D3D11(GraphicsService_D3D11* pGraphicsService, const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, MipMapMode mipMapMode)
+BitmapTexture_D3D11(GraphicsService_D3D11* pGraphicsService, const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings)
 {
     m_pGraphicsService = pGraphicsService; 
     m_pTexture = 0;
     m_pSamplerState = 0;
     
-    SetBitmap(pBitmap, width, height, format, samplerSettings, mipMapMode);
+    SetBitmap(pBitmap, width, height, format, samplerSettings);
 }
 
 unsigned int GetLevelCount(unsigned int width, unsigned int height)
@@ -456,7 +455,7 @@ unsigned int GetLevelCount(unsigned int width, unsigned int height)
     return level;
 }
 
-void SetBitmap(const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, MipMapMode mipMapMode)
+void SetBitmap(const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings)
 {
     mini3d_assert(pBitmap != 0, "Setting a Bitmap Texture with a NULL data pointer!");
     mini3d_assert((width & (width - 1)) == 0, "Setting a Bitmap Texture to a non power of two width!");
@@ -475,7 +474,7 @@ void SetBitmap(const char* pBitmap, unsigned int width, unsigned int height, For
 
     unsigned int levelCount = GetLevelCount(width, height);
 
-    if (mipMapMode == MIPMAP_MANUAL)
+    if (samplerSettings.mipMapMode == SamplerSettings::MIPMAP_MANUAL)
     {
         D3D11_TEXTURE2D_DESC desc = { width, height, levelCount, 1, DXGI_FORMATS[(unsigned int)format], {1}, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0 };
         D3D11_SUBRESOURCE_DATA* pResourceData = new D3D11_SUBRESOURCE_DATA[levelCount];
@@ -499,7 +498,7 @@ void SetBitmap(const char* pBitmap, unsigned int width, unsigned int height, For
         mini3d_assert(S_OK == pDevice->CreateTexture2D(&desc, pResourceData, &m_pTexture), "Creating Direct3D 11 texture failed!");
         delete pResourceData;
     }
-    else if (mipMapMode == MIPMAP_NONE)
+    else if (samplerSettings.mipMapMode == SamplerSettings::MIPMAP_NONE)
     {
         levelCount = 1;
         D3D11_TEXTURE2D_DESC desc = { width, height, 1, 1, DXGI_FORMATS[(unsigned int)format], {1}, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0 };
@@ -538,8 +537,8 @@ void SetBitmap(const char* pBitmap, unsigned int width, unsigned int height, For
         delete[] data;
     }
 
-    D3D11_SHADER_RESOURCE_VIEW_DESC rDesc = { DXGI_FORMATS[(unsigned int)format], D3D_SRV_DIMENSION_TEXTURE2D, { 0, levelCount - 1 }}; 
-    mini3d_assert(S_OK ==pDevice->CreateShaderResourceView(m_pTexture, &rDesc, &m_pShaderResourceView), "Creating Direct3D 11 Texture Shader Resource View failed!");
+    D3D11_SHADER_RESOURCE_VIEW_DESC rDesc = { DXGI_FORMATS[(unsigned int)format], D3D_SRV_DIMENSION_TEXTURE2D, { 0, levelCount }}; 
+    mini3d_assert(S_OK == pDevice->CreateShaderResourceView(m_pTexture, &rDesc, &m_pShaderResourceView), "Creating Direct3D 11 Texture Shader Resource View failed!");
 
     // Set sampler state
     if (m_pSamplerState != 0)
@@ -556,7 +555,6 @@ void SetBitmap(const char* pBitmap, unsigned int width, unsigned int height, For
     m_samplerSettings = samplerSettings;
     m_width = width;
     m_height = height;
-    m_mipMapMode = mipMapMode;
 }
 
 
@@ -577,7 +575,6 @@ void Unload()
 private:
     unsigned int m_width;
     unsigned int m_height;
-	MipMapMode m_mipMapMode;
 	SamplerSettings m_samplerSettings;
 	Format m_format;
 
@@ -601,7 +598,6 @@ public:
     void SetViewport(Viewport viewport)                     { } // TODO: This should do something
 
     SamplerSettings GetSamplerSettings() const              { return m_samplerSettings; }
-    MipMapMode GetMipMapMode() const                        { return m_mipMapMode; }
     Format GetFormat() const                                { return m_format; }
     bool GetDepthTestEnabled() const                        { return m_depthTestEnabled; }
     ID3D11ShaderResourceView* GetShaderResourceView() const { return m_pShaderResourceView; }
@@ -614,7 +610,7 @@ public:
 
     ~RenderTargetTexture_D3D11()                            { Unload(); }
 
-    RenderTargetTexture_D3D11(GraphicsService_D3D11* pGraphicsService, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled, MipMapMode mipMapMode)
+    RenderTargetTexture_D3D11(GraphicsService_D3D11* pGraphicsService, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled)
     {
         m_pGraphicsService = pGraphicsService; 
         m_pTexture = 0;
@@ -624,16 +620,16 @@ public:
         m_pShaderResourceView = 0;
         m_pSamplerState = 0;
 
-        SetRenderTargetTexture(width, height, format, samplerSettings, depthTestEnabled, mipMapMode);
+        SetRenderTargetTexture(width, height, format, samplerSettings, depthTestEnabled);
     }
 
-    void SetRenderTargetTexture(unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled, MipMapMode mipMapMode)
+    void SetRenderTargetTexture(unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled)
     {
         mini3d_assert((width & (width - 1)) == 0, "Setting a Bitmap Texture to a non power of two width!");
         mini3d_assert((height & (height - 1)) == 0, "Setting a Bitmap Texture to a non power of two height!");
         mini3d_assert(width >= 64, "Setting a Bitmap Texture to a height less than 64!");
         mini3d_assert(height >= 64, "Setting a Bitmap Texture to a width less than 64!");
-        mini3d_assert(mipMapMode != MIPMAP_MANUAL, "Manual mip-map mode is not available for render target textures!");
+        mini3d_assert(samplerSettings.mipMapMode != SamplerSettings::MIPMAP_MANUAL, "Manual mip-map mode is not available for render target textures!");
 
         // TODO: Safe release and null!
         if (m_pTexture != 0)
@@ -670,7 +666,7 @@ public:
 
         static const DXGI_FORMAT DXGI_FORMATS[] = { DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R16G16B16A16_UNORM, DXGI_FORMAT_R16_UNORM, DXGI_FORMAT_R32_FLOAT };
 
-        UINT levelCount = (mipMapMode != MIPMAP_NONE) ? 0 : 1;
+        UINT levelCount = (samplerSettings.mipMapMode != SamplerSettings::MIPMAP_NONE) ? 0 : 1;
         D3D11_TEXTURE2D_DESC textureDesc = { width, height, levelCount, 1, DXGI_FORMATS[(unsigned int)format], {1}, D3D11_USAGE_DEFAULT, D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE, 0, D3D11_RESOURCE_MISC_GENERATE_MIPS };
         mini3d_assert(S_OK == pDevice->CreateTexture2D(&textureDesc, NULL, &m_pTexture), "Creating Direct3D 11 render target texture failed!");
 
@@ -705,7 +701,7 @@ public:
         D3D11_SAMPLER_DESC sampDesc = { FILTER_MODE_MAP[(unsigned int)samplerSettings.sampleMode], adressMode, adressMode, adressMode, 0, 1, D3D11_COMPARISON_LESS, {0}, 0, D3D11_FLOAT32_MAX };
         mini3d_assert(S_OK == pDevice->CreateSamplerState(&sampDesc, &m_pSamplerState), "Error creating sampler state!");
 
-        D3D11_VIEWPORT viewport = { 0, 0, width, height, 0 , 1 };
+        D3D11_VIEWPORT viewport = { 0, 0, (float)width, (float)height, 0 , 1 };
         m_viewportD3D11 = viewport;
 
         m_width = width;
@@ -713,7 +709,6 @@ public:
         m_format = format;
         m_samplerSettings = samplerSettings;
         m_depthTestEnabled = depthTestEnabled;
-        m_mipMapMode = mipMapMode;
     }
 
     void Unload()
@@ -735,7 +730,6 @@ public:
 private:
 	unsigned int m_width;
     unsigned int m_height;
-	MipMapMode m_mipMapMode;
 	Format m_format;
 	SamplerSettings m_samplerSettings;
 	bool m_depthTestEnabled;
@@ -817,7 +811,7 @@ public:
         width = rect.right - rect.left;
         height = rect.bottom - rect.top;
 
-        D3D11_VIEWPORT viewport = { 0, 0, width, height, 0 , 1 };
+        D3D11_VIEWPORT viewport = { 0.0f, 0.0f, (float)width, (float)height, 0.0f, 1.0f };
         m_viewportD3D11 = viewport;
 
         if (width != m_width || height != m_height)
@@ -958,11 +952,11 @@ public:
             m_CurrentITextureMap[i] = 0;
         }
 
-        D3D11_RASTERIZER_DESC desc = { D3D11_FILL_SOLID, D3D11_CULL_FRONT, FALSE, 0.0f, 0.0f, 0.0f, TRUE, FALSE, FALSE, FALSE };
+        D3D11_RASTERIZER_DESC desc = { D3D11_FILL_SOLID, D3D11_CULL_FRONT, FALSE, 0, 0.0f, 0.0f, TRUE, FALSE, FALSE, FALSE };
         m_pDevice->CreateRasterizerState(&desc, &m_pRasterizerStateCullClockwize);
-        D3D11_RASTERIZER_DESC desc2 = { D3D11_FILL_SOLID, D3D11_CULL_BACK, FALSE, 0.0f, 0.0f, 0.0f, TRUE, FALSE, FALSE, FALSE };
+        D3D11_RASTERIZER_DESC desc2 = { D3D11_FILL_SOLID, D3D11_CULL_BACK, FALSE, 0, 0.0f, 0.0f, TRUE, FALSE, FALSE, FALSE };
         m_pDevice->CreateRasterizerState(&desc2, &m_pRasterizerStateCullCounterClockwize);
-        D3D11_RASTERIZER_DESC desc3 = { D3D11_FILL_SOLID, D3D11_CULL_NONE, FALSE, 0.0f, 0.0f, 0.0f, TRUE, FALSE, FALSE, FALSE };
+        D3D11_RASTERIZER_DESC desc3 = { D3D11_FILL_SOLID, D3D11_CULL_NONE, FALSE, 0, 0.0f, 0.0f, TRUE, FALSE, FALSE, FALSE };
         m_pDevice->CreateRasterizerState(&desc3, &m_pRasterizerStateCullNone);
 
         SetCullMode(CULL_CLOCKWIZE); // TODO: Move somewhere proper!
@@ -1053,7 +1047,7 @@ public:
         {
             pShaderResourceView = ((RenderTargetTexture_D3D11*)pTexture)->GetShaderResourceView();
 
-            if (((RenderTargetTexture_D3D11*)pTexture)->GetMipMapMode() == ITexture::MIPMAP_AUTOGENERATE)
+            if (((RenderTargetTexture_D3D11*)pTexture)->GetSamplerSettings().mipMapMode == ITexture::SamplerSettings::MIPMAP_AUTOGENERATE)
                 m_pContext->GenerateMips(pShaderResourceView);
 
             pSamplerState = ((RenderTargetTexture_D3D11*)pTexture)->GetSamplerState();
@@ -1296,9 +1290,9 @@ IPixelShader* IPixelShader::New(IGraphicsService* pGraphics, const char* pShader
 IVertexShader* IVertexShader::New(IGraphicsService* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes, bool precompiled) { return new GraphicsService_D3D11::VertexShader_D3D11((GraphicsService_D3D11*)pGraphics, pShaderBytes, sizeInBytes, precompiled); }
 IShaderProgram* IShaderProgram::New(IGraphicsService* pGraphics, IVertexShader* pVertexShader, IPixelShader* pPixelShader) { return new GraphicsService_D3D11::ShaderProgram_D3D11((GraphicsService_D3D11*)pGraphics, pVertexShader, pPixelShader); }
 
-IRenderTargetTexture* IRenderTargetTexture::New(IGraphicsService* pGraphics, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled, MipMapMode mipMapMode) { return new GraphicsService_D3D11::RenderTargetTexture_D3D11((GraphicsService_D3D11*)pGraphics, width, height, format, samplerSettings, depthTestEnabled, mipMapMode); }
+IRenderTargetTexture* IRenderTargetTexture::New(IGraphicsService* pGraphics, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, bool depthTestEnabled) { return new GraphicsService_D3D11::RenderTargetTexture_D3D11((GraphicsService_D3D11*)pGraphics, width, height, format, samplerSettings, depthTestEnabled); }
 IWindowRenderTarget* IWindowRenderTarget::New(IGraphicsService* pGraphics, void* pNativeWindow, bool depthTestEnabled) { return new GraphicsService_D3D11::WindowRenderTarget_D3D11((GraphicsService_D3D11*)pGraphics, pNativeWindow, depthTestEnabled); }
-IBitmapTexture* IBitmapTexture::New(IGraphicsService* pGraphics, const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings, MipMapMode mipMapMode) { return new GraphicsService_D3D11::BitmapTexture_D3D11((GraphicsService_D3D11*) pGraphics, pBitmap, width, height, format, samplerSettings, mipMapMode); }
+IBitmapTexture* IBitmapTexture::New(IGraphicsService* pGraphics, const char* pBitmap, unsigned int width, unsigned int height, Format format, SamplerSettings samplerSettings) { return new GraphicsService_D3D11::BitmapTexture_D3D11((GraphicsService_D3D11*) pGraphics, pBitmap, width, height, format, samplerSettings); }
 
 IConstantBuffer* IConstantBuffer::New(IGraphicsService* pGraphics, unsigned int sizeInBytes, IShaderProgram* pShader, const char** names, unsigned int nameCount) { return new GraphicsService_D3D11::ConstantBuffer_D3D11((GraphicsService_D3D11*)pGraphics, sizeInBytes, pShader, names, nameCount); }
 IShaderInputLayout* IShaderInputLayout::New(IGraphicsService* pGraphics, IShaderProgram* pShader, InputElement* pElements, unsigned int count) { return new GraphicsService_D3D11::ShaderInputLayout_D3D11((GraphicsService_D3D11*)pGraphics, pShader, pElements, count); }
