@@ -37,12 +37,4 @@ public:
 }
 }
 
-// Include platform specific implementations
-/*
-#include "win32/platform_win32.hpp"
-#include "linux/platform_linux.hpp"
-#include "osx/platform_osx.hpp"
-#include "ios/platform_ios.hpp"
-#include "android/platform_android.hpp"
-*/
 #endif // MINI3D_GRAPHICS_IPLATFORM_H

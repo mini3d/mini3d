@@ -18,7 +18,6 @@ namespace system {
 struct ISystem
 {
     enum ScreenOrientation  { SCREEN_ORIENTATION_LANDSCAPE, SCREEN_ORIENTATION_PORTRAIT };
-    enum AppState           { APP_STATE_RUNNING, APP_STATE_PAUSED, APP_STATE_STOPPED, APP_STATE_TERMINATED };
     enum AppLifecycleModel  { APP_LIFECYCLE_MODEL_DESKTOP, APP_LIFECYCLE_MODEL_MOBILE };
 
     static ISystem* GetInstance();

@@ -744,7 +744,7 @@ struct RenderTargetTexture_OpenGL : IRenderTargetTexture, Texture_OpenGL
         if (depthTestEnabled)
         {
             glBindRenderbuffer(GL_RENDERBUFFER, m_glDepthStencil);
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24_OES, width, height);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height);
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_glDepthStencil);
         }
 

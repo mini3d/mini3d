@@ -124,9 +124,6 @@ public:
     ScreenOrientation GetScreenOrentation() const               { return m_screenOrientation; }
     void SetScreenOrientation(ScreenOrientation orientation)    { m_screenOrientation = orientation; }
 
-    AppState GetAppState() const                                { return m_AppState; }
-    void SetAppState(AppState state)                            { m_AppState = state; }
-
     AppLifecycleModel GetAppLifecycleModel() const              { return APP_LIFECYCLE_MODEL_DESKTOP; }
 
     void Terminate()                                            { exit(0); }
@@ -136,7 +133,7 @@ public:
     int GetJoystickId(unsigned int index)                       { Lock guard(&joyCriticalSection); unsigned int count=0; for(int i=0; i<16 && count<4; ++i) if (g_joyPosResult[i] == JOYERR_NOERROR && index == count++) return i; return -1; }
     bool GetJoystickInfo(int id, JoystickInfo &info)            { Lock guard(&joyCriticalSection); info.vid = g_joyCaps[id].wMid; info.pid = g_joyCaps[id].wPid; lstrcpyn(info.name, g_joyCaps[id].szPname, 32); JOYINFO i; return joyGetPos(id, &i) == JOYERR_NOERROR; }
 
-    System_win32() : m_screenOrientation(SCREEN_ORIENTATION_PORTRAIT), m_AppState(APP_STATE_FOREGROUND) 
+    System_win32() : m_screenOrientation(SCREEN_ORIENTATION_PORTRAIT)
     {
         timeBeginPeriod(1); // Set the timeGetTime() function call to millisecond accuracy
 
@@ -221,7 +218,6 @@ public:
 private:
     static System_win32 System;
     ScreenOrientation m_screenOrientation;
-    AppState m_AppState;
     HWND m_hWnd;
 };
 
