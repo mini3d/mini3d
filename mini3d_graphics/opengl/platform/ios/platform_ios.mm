@@ -9,73 +9,62 @@
 
 #if TARGET_OS_IPHONE
 
-
-#include "Platform_ios.hpp"
-#include "../../../windowrendertarget.hpp"
-#include <cstdlib>
-#include <cstdio>
-
+#include "../iplatform.hpp"
 #import <QuartzCore/QuartzCore.h>
 
-namespace mini3d {
-namespace graphics {
-    EAGLContext* sharedContext = 0;
-}
-}
 
 void mini3d_assert(bool expression, const char* text, ...);
-using namespace mini3d::graphics;
 
-@interface Mini3dUIView : UIView
-
--(void)setViewController:(UIViewController*) viewController;
--(GLuint)colorRenderbuffer;
--(GLuint)framebuffer;
+@interface RenderSurface : NSObject
+@property (nonatomic, assign, readonly) GLuint FrameBuffer;
+@property (nonatomic, assign, readonly) GLuint ColorBuffer;
+@property (nonatomic, assign, readonly) GLuint DepthBuffer;
+@property (nonatomic, retain) EAGLContext* Context;
+@property (nonatomic, retain) CAEAGLLayer* Layer;
+@property (nonatomic, retain) UIView* View;
+@property unsigned int Width;
+@property unsigned int Height;
 @end
 
-@implementation Mini3dUIView
+@implementation RenderSurface
+
+-(id)initWithUIView:(UIView*)view andEAGLContext:(EAGLContext*)context
 {
-    GLuint framebuffer;
-    GLuint colorRenderbuffer;
-    GLuint depthRenderbuffer;
-}
+    if ((self = [super init]) == nil) return self;
 
-+(Class)layerClass {
-    return [CAEAGLLayer class];
-}
+    mini3d_assert([[view layer] class] == [CAEAGLLayer class], "UIView used for window render target must have a backing layer of CAEAGLLayer type!");
+    
+    _View = view;
+    _Layer = (CAEAGLLayer*)[view layer];
+    _Context = context;
 
--(GLuint)colorRenderbuffer { return colorRenderbuffer; }
--(GLuint)framebuffer { return framebuffer; }
+    [EAGLContext setCurrentContext:_Context];
+    glGenFramebuffers(1, &_FrameBuffer);
+    glGenRenderbuffers(1, &_ColorBuffer);
+    glGenRenderbuffers(1, &_DepthBuffer);
 
--(void)renderBufferStorage {
-    [EAGLContext setCurrentContext: sharedContext];
-    glBindRenderbuffer(GL_RENDERBUFFER, colorRenderbuffer);
-    [sharedContext renderbufferStorage:GL_RENDERBUFFER fromDrawable:(CAEAGLLayer*)self.layer];
+    [self performSelectorOnMainThread:@selector(updateSize) withObject:nil waitUntilDone:YES];
+    [view performSelectorOnMainThread:@selector(setNeedsDisplay) withObject:nil waitUntilDone:YES];
+    
+    return self;
 }
 
 - (void)dealloc
 {
+    glDeleteRenderbuffers(1, &_ColorBuffer);
+    glDeleteRenderbuffers(1, &_DepthBuffer);
+    glDeleteFramebuffers(1, &_FrameBuffer);
     [super dealloc];
 }
 
--(id)initWithFrame:(CGRect)frame
+-(void)updateSize
 {
-    if ((self = [super initWithFrame:frame]) == nil)
-        return self;
+    [EAGLContext setCurrentContext: _Context];
 
-    self.layer.opaque = YES;
-    self.userInteractionEnabled = NO;
-    [self setBackgroundColor:[UIColor redColor]];
-    
-    [EAGLContext setCurrentContext: sharedContext];
-    
-    glGenFramebuffers(1, &framebuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-    
-    glGenRenderbuffers(1, &colorRenderbuffer);
-    glBindRenderbuffer(GL_RENDERBUFFER, colorRenderbuffer);
-    [self performSelectorOnMainThread:@selector(renderBufferStorage) withObject:nil waitUntilDone:YES];
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, colorRenderbuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, _FrameBuffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, _ColorBuffer);
+    [_Context renderbufferStorage:GL_RENDERBUFFER fromDrawable:_Layer];
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _ColorBuffer);
     
     GLint width;
     GLint height;
@@ -83,105 +72,76 @@ using namespace mini3d::graphics;
     glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &width);
     glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, &height);
     
-    glGenRenderbuffers(1, &depthRenderbuffer);
-    glBindRenderbuffer(GL_RENDERBUFFER, depthRenderbuffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, _DepthBuffer);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24_OES, width, height);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthRenderbuffer);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _DepthBuffer);
     
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    if (status != GL_FRAMEBUFFER_COMPLETE)
-    {
-        NSLog(@"Failed to make complete framebuffer object %x", glCheckFramebufferStatus(GL_FRAMEBUFFER));
-    }
-
-    return self;
+    mini3d_assert(status == GL_FRAMEBUFFER_COMPLETE, "Failed to make complete framebuffer object %x", glCheckFramebufferStatus(GL_FRAMEBUFFER));
+    
+    _Width = width;
+    _Height = height;
 }
 
--(void)setViewController:(UIViewController*) viewController { [viewController setView:self]; }
--(void)clearViewController:(UIViewController*) viewController { [viewController setView:0]; }
 @end
 
 
 ///////// PLATFORM ////////////////////////////////////////////////////////////
 
-Platform_ios::~Platform_ios()
+namespace mini3d {
+namespace graphics {
+
+class Platform_ios : public IPlatform
 {
-    [sharedContext release];
-}
+public:
+    unsigned int GetNativeSurfaceWidth(void* nativeSurface) const   { return [(RenderSurface*)nativeSurface Width]; }
+    unsigned int GetNativeSurfaceHeight(void* nativeSurface) const  { return [(RenderSurface*)nativeSurface Height]; }
 
-Platform_ios::Platform_ios()
-{
-    sharedContext = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
-    [EAGLContext setCurrentContext:sharedContext];
-}
-
-void Platform_ios::PrepareWindow(IWindowRenderTarget* pWindowRenderTarget)
-{
-    UIWindow* window = (UIWindow*)pWindowRenderTarget->GetWindowHandle();
-    mini3d_assert([window rootViewController] == 0, "The window used with a window render target must not have a rootViewController set.");
-    mini3d_assert([[window subviews] count] == 0, "The window used with a window render target must not have any subviews set.");
-
-    [window setRootViewController:[[UIViewController alloc] init]];
-    Mini3dUIView* view = [[Mini3dUIView alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
-    [view performSelectorOnMainThread:@selector(setViewController:) withObject:[window rootViewController] waitUntilDone:YES];
-}
-
-void Platform_ios::UnPrepareWindow(IWindowRenderTarget* pWindowRenderTarget)
-{
-    UIWindow* window = (UIWindow*)pWindowRenderTarget->GetWindowHandle();
-    Mini3dUIView* view = (Mini3dUIView*)[[window rootViewController] view];
-    UIViewController* viewController = [window rootViewController];
-    [view performSelectorOnMainThread:@selector(clearViewController:) withObject:viewController waitUntilDone:YES];
-    [viewController release];
-    [view release];
-}
-
-void Platform_ios::GetWindowContentSize(IWindowRenderTarget* pWindowRenderTarget, unsigned int &width, unsigned int &height) const
-{
-    UIWindow* window = (UIWindow*)pWindowRenderTarget->GetWindowHandle();
-    Mini3dUIView* view = (Mini3dUIView*)[[window rootViewController] view];
-
-    glBindRenderbuffer(GL_RENDERBUFFER, [view colorRenderbuffer]);
-
-    GLint glwidth;
-    GLint glheight;
+    void* PrepareWindow(void* nativeWindow)                         { return [[RenderSurface alloc] initWithUIView:(UIView*)nativeWindow andEAGLContext:m_pContext]; }
+    void UnPrepareWindow(void* nativeWindow, void* nativeSurface)   { [(RenderSurface*)nativeSurface release]; }
     
-    glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &glwidth);
-    glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, &glheight);
-  
-    width = glwidth;
-    height = glheight;
-    
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
-}
+    ~Platform_ios()                                                 { [m_pContext release]; }
 
-void Platform_ios::SwapWindowBuffers(IWindowRenderTarget* pWindowRenderTarget)
-{    
-    UIWindow* window = (UIWindow*)pWindowRenderTarget->GetWindowHandle();
-    Mini3dUIView* view = (Mini3dUIView*)[[window rootViewController] view];
-
-    glBindRenderbuffer(GL_RENDERBUFFER, [view colorRenderbuffer]);
-    [sharedContext presentRenderbuffer:[view colorRenderbuffer]];
-}
-
-void Platform_ios::SetRenderWindow(IWindowRenderTarget* pWindowRenderTarget)
-{
-    if (pWindowRenderTarget == 0)
+    Platform_ios()
     {
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
-    }
-    else
-    {
-        UIWindow* window = (UIWindow*)pWindowRenderTarget->GetWindowHandle();
-        Mini3dUIView* view = (Mini3dUIView*)[[window rootViewController] view];
-
-        [EAGLContext setCurrentContext:sharedContext];
-        glBindFramebuffer(GL_FRAMEBUFFER, [view framebuffer]);
-        glBindRenderbuffer(GL_RENDERBUFFER, [view colorRenderbuffer]);
+        m_pContext = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+        [EAGLContext setCurrentContext:m_pContext];
     }
 
-}
+    void SwapWindowBuffers(void* nativeSurface)
+    {    
+        RenderSurface* pRenderSurface = (RenderSurface*)nativeSurface;
 
+        glBindRenderbuffer(GL_RENDERBUFFER, [pRenderSurface ColorBuffer]);
+        [m_pContext presentRenderbuffer:[pRenderSurface ColorBuffer]];
+    }
+
+    void MakeCurrent(void* nativeSurface)
+    {
+        RenderSurface* pRenderSurface = (RenderSurface*)nativeSurface;
+
+        if (pRenderSurface == 0)
+        {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glBindRenderbuffer(GL_RENDERBUFFER, 0);
+        }
+        else
+        {
+            if ([pRenderSurface View].frame.size.width != [pRenderSurface Width] || [pRenderSurface View].frame.size.height != [pRenderSurface Height])
+                [pRenderSurface performSelectorOnMainThread:@selector(updateSize) withObject:nil waitUntilDone:YES];
+            
+            glBindFramebuffer(GL_FRAMEBUFFER, [pRenderSurface FrameBuffer]);
+            glBindRenderbuffer(GL_RENDERBUFFER, [pRenderSurface ColorBuffer]);
+        }
+
+    }
+    
+private:
+    EAGLContext* m_pContext;
+};
+
+IPlatform* IPlatform::New() { return new Platform_ios(); }
+}
+}
 
 #endif

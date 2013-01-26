@@ -1,5 +1,5 @@
 
-// Copyright (c) <2011> Daniel Peterson
+// Copyright (c) <2011-2013> Daniel Peterson
 // This file is part of Mini3D <www.mini3d.org>
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
@@ -9,73 +9,111 @@
 
 #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
 
-#include "platform_osx.hpp"
-#include "../../../windowrendertarget.hpp"
+#include "../iplatform.hpp"
 
 #include <Cocoa/Cocoa.h>
 #include <cstdlib>
 #include <cstdio>
 
+@interface OpenGLNSView : NSView { }
+@property (nonatomic, assign) NSOpenGLContext* context;
+@property (nonatomic, assign) NSRect rect;
+
+- (BOOL) acceptsFirstResponder;
+- (BOOL) becomeFirstResponder;
+
+@end
+
+@implementation OpenGLNSView { }
+- (BOOL) acceptsFirstResponder { return NO; }
+- (BOOL) becomeFirstResponder { return NO; }
+@end
+
 namespace mini3d {
 namespace graphics {
 
-    NSOpenGLContext* context = 0;
-
-}
-}
-
 void mini3d_assert(bool expression, const char* text, ...);
-using namespace mini3d::graphics;
 
-
+    
 ///////// PLATFORM ////////////////////////////////////////////////////////////
 
-// NOTE: SetInternalWindowPixelFormat is a workaround for platforms (windows specifically) that need all windows for a device context to be of the same pixel format.
-// It will return true if the old internal pixel format was incompatible with the new one (requiring the device context to be recreated).
-// Platforms without limitations on pixel formats will simply always return false.
-
-Platform_osx::~Platform_osx()                                     { @autoreleasepool { [context release]; }}
-
-Platform_osx::Platform_osx()
+const NSOpenGLPixelFormatAttribute attributes[] = { NSOpenGLPFADoubleBuffer, NSOpenGLPFADepthSize, 24, NSOpenGLPFAColorSize, 24, nil };
+    
+class Platform_osx : public IPlatform
 {
-    @autoreleasepool {
+public:
+    unsigned int GetNativeSurfaceWidth(void* nativeSurface) const   { return ((NSView*)nativeSurface).frame.size.width; }
+    unsigned int GetNativeSurfaceHeight(void* nativeSurface) const  { return ((NSView*)nativeSurface).frame.size.height; }
 
-    NSOpenGLPixelFormatAttribute attributes [] = {NSOpenGLPFADoubleBuffer, NSOpenGLPFADepthSize, 24, NSOpenGLPFAColorSize, 24, nil};
-    NSOpenGLPixelFormat* pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
+    void SwapWindowBuffers(void* nativeSurface)                     { @autoreleasepool { glFlush(); [[(OpenGLNSView*)nativeSurface context] flushBuffer]; }}
+    
+    ~Platform_osx()                                                 { @autoreleasepool { [m_pPixelFormat release]; [m_pContext release]; }}
 
-    context = [[NSOpenGLContext alloc] initWithFormat:pixelFormat shareContext:nil];
-    [context makeCurrentContext];
-    }
-}
+    Platform_osx()
+    {
+        @autoreleasepool {
+            m_pPixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
 
-void Platform_osx::GetWindowContentSize(MINI3D_WINDOW window, unsigned int &width, unsigned int &height) const
-{
-    @autoreleasepool {
-    NSWindow* nswindow = (NSWindow*)window;
-        NSRect rect = [[nswindow contentView] frame];
-        width = rect.size.width;
-        height = rect.size.height;
-    }
-}
-
-void Platform_osx::SwapWindowBuffers(IWindowRenderTarget* pWindowRenderTarget)
-{
-    @autoreleasepool { glFlush(); [context flushBuffer]; }
-}
-
-void Platform_osx::SetRenderWindow(IWindowRenderTarget* pWindowRenderTarget)
-{
-    @autoreleasepool {
-        if (pWindowRenderTarget == 0)
-        {
-            [context setView:nil];
-        }
-        else
-        {
-            NSWindow* window = (NSWindow*)pWindowRenderTarget->GetWindowHandle();
-            [context setView:[window contentView]];
+            m_pContext = [[NSOpenGLContext alloc] initWithFormat:m_pPixelFormat shareContext:nil];
+            [m_pContext makeCurrentContext];
         }
     }
+
+    void* PrepareWindow(void* nativeWindow)
+    {
+        @autoreleasepool {
+            NSWindow* window = (NSWindow*)nativeWindow;
+            NSRect rect = [window contentRectForFrameRect:[window frame]];
+            
+            OpenGLNSView* contentView = [[OpenGLNSView alloc] initWithFrame:NSMakeRect(0, 0, rect.size.width, rect.size.height)];
+            [window setContentView:contentView];
+
+            NSOpenGLContext* pContext = [[NSOpenGLContext alloc] initWithFormat:m_pPixelFormat shareContext:m_pContext];
+            [pContext setView:contentView];
+
+            [contentView setContext:pContext];
+            [contentView setRect:NSMakeRect(0,0,0,0)];
+            
+            return contentView;
+        }    
+    }
+    
+    void UnPrepareWindow(void* nativeWindow, void* nativeSurface)
+    {
+        @autoreleasepool {
+            NSWindow* window = (NSWindow*)nativeWindow;
+            [window setContentView: nil];
+
+            OpenGLNSView* view = (OpenGLNSView*)nativeSurface;
+            [[view context] release];
+            [view release];
+        }
+    }
+
+    void MakeCurrent(void* nativeSurface)
+    {
+        @autoreleasepool {
+            OpenGLNSView* view = (OpenGLNSView*)nativeSurface;
+            
+            if (!NSEqualRects([view rect], [view frame]))
+            {
+                [[view context] update];
+                [view setRect:[view frame]];
+            }
+            
+            [[view context] makeCurrentContext];
+        }
+    }
+
+    
+private:
+    NSOpenGLPixelFormat* m_pPixelFormat;
+    NSOpenGLContext* m_pContext = 0;
+};
+    
+    IPlatform* IPlatform::New() { return new Platform_osx(); }
+    
+}
 }
 
 

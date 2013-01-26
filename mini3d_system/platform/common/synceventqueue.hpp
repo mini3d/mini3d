@@ -16,30 +16,32 @@
 
 namespace mini3d {
 namespace system {
-
+        
 template <typename EventType>
 struct EventQueue
 {
     struct Lock { Lock(pthread_mutex_t* m) { x=m; pthread_mutex_lock(x); } ~Lock() { pthread_mutex_unlock(x); } private: pthread_mutex_t* x; };
-
+    
     static const int SIZE = 1024;
-
-    EventQueue() : c(0), w(0)           { pthread_mutex_init(&mutex, 0); pthread_cond_init(&cond, 0); }
-    ~EventQueue()                       { pthread_mutex_destroy(&mutex); pthread_cond_destroy(&cond); }
-
+    
+    EventQueue() : c(0), w(0)           { pthread_mutex_init(&mutex, 0); }
+    ~EventQueue()                       { pthread_mutex_destroy(&mutex); }
+    
     void AddEvent(EventType &ev)        { Lock guard(&mutex); if (c < SIZE - 1) { mpEvents[w] = ev; ++w %= SIZE; ++c; } }
-    void AddEventSync(EventType &ev)    { Lock guard(&mutex); if (c < SIZE - 1) { mpEvents[w] = ev; ++w %= SIZE; ++c; } pthread_cond_wait(&cond, &mutex); }
-
-    const bool GetEvent(EventType &ev)  { Lock guard(&mutex); if (c > 0) { ev = mpEvents[(SIZE + w - c--) % SIZE]; return true; } pthread_cond_signal(&cond); return false; }
-
+    void AddEventSync(EventType &ev)    { Lock guard(&mutex); m_hasSynced = false; if (c < SIZE - 1) { mpEvents[w] = ev; ++w %= SIZE; ++c; } }
+    
+    bool GetEvent(EventType &ev)        { Lock guard(&mutex); if (c > 0) { ev = mpEvents[(SIZE + w - c--) % SIZE]; return true; } m_hasSynced = true; return false; }
+    bool GetHasSynced()                 { Lock guard(&mutex); return m_hasSynced; }
+    
     bool IsEmpty()                      { Lock guard(&mutex); return c == 0; }
-
+    
     EventType mpEvents[SIZE];
     int c, w;
-
+    
     pthread_mutex_t mutex;
-	pthread_cond_t cond;
+    bool m_hasSynced;
 };
+    
+}
+}
 
-}
-}

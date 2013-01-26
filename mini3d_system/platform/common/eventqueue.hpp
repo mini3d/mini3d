@@ -13,7 +13,7 @@
 #include "../../event.hpp"
 
 namespace mini3d {
-namespace window {
+namespace system {
 
 // Circular Event Buffer
 template <typename EventType>

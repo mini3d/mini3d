@@ -25,6 +25,7 @@
 
 // TODO: Text input events are not implemented. There is no support for getting a unicode character from a key code in the NDK.
 // TODO: Joystick events are not implemented.
+// TODO: Make sync events wait for GetHasSynced to return true!
 
 using namespace mini3d::system;
 
@@ -153,7 +154,7 @@ public:
     AppState GetAppState() const                                { return m_AppState; }
     void SetAppState(AppState state)                            { m_AppState = state; }
 
-    AppLifecycleModel GetAppLifecycleModel() const              { return APP_LIFECYCLE_MODEL_DESKTOP; }
+    AppLifecycleModel GetAppLifecycleModel() const              { return APP_LIFECYCLE_MODEL_MOBILE; }
 
     void Terminate()                                            { } // TODO: Implement
 

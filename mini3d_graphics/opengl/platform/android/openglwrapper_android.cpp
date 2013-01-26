@@ -57,8 +57,8 @@ void glCompressedTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint 
 void glDeleteBuffers(GLsizei n, const GLuint *buffers) { ::glDeleteBuffers(n, buffers); }
 void glGenBuffers(GLsizei n, GLuint *buffers) { ::glGenBuffers(n, buffers); }
 void glBindBuffer(GLenum target, GLuint buffer) { ::glBindBuffer(target, buffer); }
-GLvoid* glMapBuffer(GLenum target, GLenum access) {  }
-GLboolean glUnmapBuffer(GLenum target) { }
+GLvoid* glMapBuffer(GLenum target, GLenum access) { return 0; }
+GLboolean glUnmapBuffer(GLenum target) { return true; }
 void glBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage) { ::glBufferData(target, size, data, usage); }
 void glGetBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, GLvoid *data) { }
 

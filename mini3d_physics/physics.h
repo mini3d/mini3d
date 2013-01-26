@@ -3,7 +3,7 @@
 // This file is part of Mini3D <www.mini3d.org>
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
-#ifdef ALKJ
+#if 0
 #ifndef MINI3D_PHYSICS_PHYSICS_H
 #define MINI3D_PHYSICS_PHYSICS_H
 

@@ -388,7 +388,7 @@ private:
 
 struct ShaderInputLayout_OpenGL : IShaderInputLayout
 {
-    struct Attribute { GLuint location; GLint size; GLenum type; unsigned int bufferIndex; GLvoid* offsetInBytes; StreamRate rate; }; 
+    struct Attribute { GLint location; GLint size; GLenum type; unsigned int bufferIndex; GLvoid* offsetInBytes; StreamRate rate; };
 
     unsigned int GetInputElementCount() const { return m_attributeCount; };
     void GetInputElements(InputElement* pElements) const { for(unsigned int i = 0; i < m_attributeCount; ++i) pElements[i]= m_pElements[i]; };
@@ -744,7 +744,7 @@ struct RenderTargetTexture_OpenGL : IRenderTargetTexture, Texture_OpenGL
         if (depthTestEnabled)
         {
             glBindRenderbuffer(GL_RENDERBUFFER, m_glDepthStencil);
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24_OES, width, height);
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_glDepthStencil);
         }
 
@@ -1019,9 +1019,6 @@ private:
             pRenderTargetTexture->SetIsMipMapDirty(true);
             glBindFramebuffer(GL_FRAMEBUFFER, pRenderTargetTexture->GetGLFramebuffer());
 
-            unsigned int width = pRenderTargetTexture->GetWidth();
-            unsigned int height = pRenderTargetTexture->GetHeight();
-
             glViewport(0,0, pRenderTargetTexture->GetWidth(), pRenderTargetTexture->GetHeight());
 
             return;
@@ -1032,6 +1029,7 @@ private:
             WindowRenderTarget_OpenGL* pWindowRenderTarget = (WindowRenderTarget_OpenGL*)pRenderTarget;
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             m_pPlatform->MakeCurrent(pWindowRenderTarget->GetNativeSurface());
+            
             glViewport(0,0, pWindowRenderTarget->GetWidth(), pWindowRenderTarget->GetHeight());
             return;
 	    }
