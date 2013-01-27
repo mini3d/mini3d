@@ -11,7 +11,7 @@
 
 #include "../../window.hpp"
 #include "../../system.hpp"
-#include "../common/synceventqueue.hpp"
+#include "../common/eventqueue.hpp"
 
 #import <Cocoa/Cocoa.h>
 #include "unicodekeyid.inl"

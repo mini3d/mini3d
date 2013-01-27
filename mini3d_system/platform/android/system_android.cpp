@@ -3,7 +3,7 @@
 
 #include "../../window.hpp"
 #include "../../system.hpp"
-#include "../common/synceventqueue.hpp"
+#include "../common/eventqueue.hpp"
 
 #include <jni.h>
 #include <errno.h>
@@ -330,7 +330,6 @@ public:
 
 private:
 	ScreenState m_screenState;
-
     ANativeWindow* m_pWindow;
 };
 

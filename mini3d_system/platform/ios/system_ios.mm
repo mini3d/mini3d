@@ -11,7 +11,7 @@
 
 #include "../../window.hpp"
 #include "../../system.hpp"
-#include "../common/synceventqueue.hpp"
+#include "../common/eventqueue.hpp"
 
 #import <UIKit/UIKit.h>
 #import <QuartzCore/CAEAGLLayer.h>
@@ -42,7 +42,7 @@ public:
     AppLifecycleModel GetAppLifecycleModel() const              { return APP_LIFECYCLE_MODEL_MOBILE; }
 
     bool GetEvent(SystemEvent &ev)                              { return m_systemEventQueue.GetEvent(ev); }
-    void AddEventSync(SystemEvent ev)                           { m_systemEventQueue.AddEventSync(ev); while(!m_systemEventQueue.GetHasSynced()) { [[NSRunLoop mainRunLoop] runUntilDate:nil]; usleep(500); } }
+    void AddEvent(SystemEvent ev)								{ m_systemEventQueue.AddEvent(ev); while(!m_systemEventQueue.GetHasSynced()) { [[NSRunLoop mainRunLoop] runUntilDate:nil]; usleep(500); } }
     
     void Terminate()                                            { } // TODO: Implement
     
@@ -72,11 +72,11 @@ ISystem* ISystem::GetInstance() { return System_ios::GetInstance(); }
 @implementation AppDelegate
 
 - (void)dealloc                                                     { [super dealloc]; }
-- (void)applicationWillResignActive:(UIApplication *)application    { SystemEvent ev = { SystemEvent::APP_STATE_PAUSE }; System_ios::GetInstance()->AddEventSync(ev); }
-- (void)applicationDidEnterBackground:(UIApplication *)application  { SystemEvent ev = { SystemEvent::APP_STATE_STOP }; System_ios::GetInstance()->AddEventSync(ev); }
-- (void)applicationWillEnterForeground:(UIApplication *)application { SystemEvent ev = { SystemEvent::APP_STATE_RESTART }; System_ios::GetInstance()->AddEventSync(ev); }
-- (void)applicationDidBecomeActive:(UIApplication *)application     { SystemEvent ev = { SystemEvent::APP_STATE_RESUME }; System_ios::GetInstance()->AddEventSync(ev); }
-- (void)applicationWillTerminate:(UIApplication *)application       { SystemEvent ev = { SystemEvent::APP_STATE_TERMINATE }; System_ios::GetInstance()->AddEventSync(ev); }
+- (void)applicationWillResignActive:(UIApplication *)application    { SystemEvent ev = { SystemEvent::APP_STATE_PAUSE }; System_ios::GetInstance()->AddEvent(ev); }
+- (void)applicationDidEnterBackground:(UIApplication *)application  { SystemEvent ev = { SystemEvent::APP_STATE_STOP }; System_ios::GetInstance()->AddEvent(ev); }
+- (void)applicationWillEnterForeground:(UIApplication *)application { SystemEvent ev = { SystemEvent::APP_STATE_RESTART }; System_ios::GetInstance()->AddEvent(ev); }
+- (void)applicationDidBecomeActive:(UIApplication *)application     { SystemEvent ev = { SystemEvent::APP_STATE_RESUME }; System_ios::GetInstance()->AddEvent(ev); }
+- (void)applicationWillTerminate:(UIApplication *)application       { SystemEvent ev = { SystemEvent::APP_STATE_TERMINATE }; System_ios::GetInstance()->AddEvent(ev); }
 
 // App entry point
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions

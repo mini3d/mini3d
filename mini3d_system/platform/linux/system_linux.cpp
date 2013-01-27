@@ -8,7 +8,6 @@
 #include "../../window.hpp"
 #include "../../system.hpp"
 #include "../../timer.hpp"
-#include "../common/eventqueue.h"
 
 #include <X11/Xlib.h>
 #include <X11/XKBlib.h>
@@ -38,9 +37,6 @@ public:
     ScreenOrientation GetScreenOrentation() const               { return m_screenOrientation; }
     void SetScreenOrientation(ScreenOrientation orientation)    { m_screenOrientation = orientation; }
 
-    AppState GetAppState() const                                { return m_AppState; }
-    void SetAppState(AppState state)                            { m_AppState = state; }
-
     AppLifecycleModel GetAppLifecycleModel() const              { return APP_LIFECYCLE_MODEL_DESKTOP; }
 
     void Terminate()                                            { exit(0); }
@@ -67,7 +63,6 @@ public:
 private:
     static System_linux System;
     ScreenOrientation m_screenOrientation;
-    AppState m_AppState;
 };
 
 System_linux System_linux::System;
