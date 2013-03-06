@@ -1,5 +1,5 @@
 
-// Copyright (c) <2011-2012> Daniel Peterson
+// Copyright (c) <2011-2013> Daniel Peterson
 // This file is part of Mini3D <www.mini3d.org>
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 

@@ -7,6 +7,8 @@
 #include <cstdlib>
 #include <cstring>
 
+void mini3d_assert(bool expression, const char* text, ...);
+
 namespace mini3d {
 namespace system {
        
@@ -26,7 +28,7 @@ struct EventQueue
 public:
     struct Lock { Lock(pthread_mutex_t* m)  { x=m; pthread_mutex_lock(x); } ~Lock() { pthread_mutex_unlock(x); } private: pthread_mutex_t* x; };
     
-    EventQueue(unsigned int cap = 1024)     { pthread_mutex_init(&mutex, 0); arr = r = w = malloc((size = cap) * sizeof(EventType)); }
+    EventQueue(unsigned int cap = 1024)     { pthread_mutex_init(&mutex, 0); arr = r = w = SafeMalloc((size = cap) * sizeof(EventType)); }
     ~EventQueue()                           { pthread_mutex_destroy(&mutex); free(arr); }
     
     void AddEvent(EventType &ev)            { Lock guard(&mutex); GrowAsNeeded(); arr[w] = ev; w = incWrap(w); m_hasSynced = false; }
@@ -35,8 +37,11 @@ public:
     
     bool IsEmpty()                          { Lock guard(&mutex); return c == 0; }
 
+    EventType* SafeMalloc(unsigned int s)   { EventType* pE = malloc(s); mini3d_assert(pE, "Out of memory!"); return pE; }
+    EventType* SafeRealloc(unsigned int s)  { EventType* pE = realloc(s); mini3d_assert(pE, "Out of memory!"); return pE; }
+
 private:
-    void GrowAsNeeded()                     { if (incWrap(w) == r) realloc(arr, 2 * size * sizeof(EventType)); memcpy(r + size, r, arr + size - r); }
+    void GrowAsNeeded()                     { if (incWrap(w) == r) SafeRealloc(arr, 2 * size * sizeof(EventType)); memcpy(r + size, r, arr + size - r); }
     EventType* incWrap(EventType** p)       { if (++p == arr + size) p = arr; return p; }
 
     EventType* arr, r, w;
