@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) { return mini3d_main(argc, argv); };
 const unsigned int MAX_JOYSTICK_INT_VALUE = 4096;
 const unsigned int JOYSTICK_MOVEMENT_THRESHOLD = 32;
 
-LRESULT CALLBACK WindowProc(HWND h, UINT m, WPARAM w, LPARAM l) { if (m == WM_DEVICECHANGE) PostMessage(h, m, w, l); return DefWindowProc(h, m, w, l); }
+LRESULT CALLBACK SystemWindowProc(HWND h, UINT m, WPARAM w, LPARAM l) { if (m == WM_DEVICECHANGE) PostMessage(h, m, w, l); return DefWindowProc(h, m, w, l); }
 
 #define WM_JOYSTICK_BUTTON_DOWN (WM_USER + 0x0001)
 #define WM_JOYSTICK_BUTTON_UP (WM_USER + 0x0002)
@@ -143,7 +143,7 @@ public:
 
         // Create window that will monitor when joysticks are connected and dis-connected
         m_hWnd = CreateWindowEx(0, "STATIC", "MINI3D_Joystick_window", 0, 0, 0, 0, 0, 0, 0, GetModuleHandle(NULL), 0);
-        SetWindowLong(m_hWnd, GWL_WNDPROC, (LONG)&WindowProc);
+        SetWindowLong(m_hWnd, GWL_WNDPROC, (LONG)&SystemWindowProc);
 
         // create joystick thread
         InitializeCriticalSection(&joyCriticalSection);
@@ -234,7 +234,9 @@ void        Timer::Sleep(uint64_t microSeconds)     { ::Sleep(DWORD(microSeconds
 
 ////////// WINDOW /////////////////////////////////////////////////////////////
 
-const WNDCLASSEX WINDOW_CLASS_TEMPLATE =    { sizeof(WNDCLASSEX), 0, &DefWindowProc, 0, 0, GetModuleHandle(NULL), 0, LoadCursor(NULL , IDC_ARROW), 0, 0, "mini3D_user_window" };
+LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM);
+
+const WNDCLASSEX WINDOW_CLASS_TEMPLATE =    { sizeof(WNDCLASSEX), 0, WindowProc, 0, 0, GetModuleHandle(NULL), 0, LoadCursor(NULL , IDC_ARROW), 0, 0, "mini3D_user_window" };
 ATOM windowClassAtom =                      RegisterClassEx(&WINDOW_CLASS_TEMPLATE);
 
 class Window_win32 : public IWindow
@@ -328,16 +330,16 @@ public:
             case WM_PAINT:
                 ev.type = Event::REFRESH;
                 return true;
-            case WM_SETFOCUS:
+            case WM_SETFOCUS + WM_USER:
                 ev.type = Event::GOT_FOCUS;
                 return true;
-            case WM_KILLFOCUS:
+            case WM_KILLFOCUS + WM_USER:
                 ev.type = Event::LOST_FOCUS;
                 return true;
-            case WM_CLOSE:
+            case WM_CLOSE + WM_USER:
                 ev.type = Event::CLOSE;
                 return true;
-            case WM_SIZE: {
+            case WM_EXITSIZEMOVE + WM_USER: {
                 ev.type = Event::RESIZE;
                 Event::Size size = { LOWORD(lParam), HIWORD(lParam) };
                 ev.size = size;
@@ -432,6 +434,24 @@ private:
 };
 
 IWindow* IWindow::New(const char* title, unsigned int width, unsigned int height) { return new Window_win32(title, width, height); }
+
+
+LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch(msg)
+    {
+        case WM_SETFOCUS:
+        case WM_KILLFOCUS:
+        case WM_EXITSIZEMOVE:
+            PostMessage(hWnd, msg + WM_USER, wParam, lParam); 
+            break;
+        case WM_CLOSE:
+            PostMessage(hWnd, msg + WM_USER, wParam, lParam); 
+            return FALSE;
+    }
+
+    return DefWindowProc(hWnd, msg, wParam, lParam);
+}
 
 
 #endif

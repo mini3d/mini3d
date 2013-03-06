@@ -3,7 +3,6 @@
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
 #include "../../event.hpp"
-#include <pthread.h>
 #include <cstdlib>
 #include <cstring>
 
@@ -20,8 +19,6 @@ namespace system {
 // GetHasSynced() will return true whenever all events in the queue has been processed.
 // Don't add new events to the queue before GetHasSynced() has returned true.
 
-// TODO: Safe malloc and realloc!
-
 template <typename EventType>
 struct EventQueue
 {
@@ -37,8 +34,8 @@ public:
     
     bool IsEmpty()                          { Lock guard(&mutex); return c == 0; }
 
-    EventType* SafeMalloc(unsigned int s)   { EventType* pE = malloc(s); mini3d_assert(pE, "Out of memory!"); return pE; }
-    EventType* SafeRealloc(unsigned int s)  { EventType* pE = realloc(s); mini3d_assert(pE, "Out of memory!"); return pE; }
+    EventType* SafeMalloc(unsigned int s)   { EventType* pE = malloc(s); mini3d_assert(pE, "Out of memory in eventqueue!"); return pE; }
+    EventType* SafeRealloc(unsigned int s)  { EventType* pE = realloc(s); mini3d_assert(pE, "Out of memory in eventqueue!"); return pE; }
 
 private:
     void GrowAsNeeded()                     { if (incWrap(w) == r) SafeRealloc(arr, 2 * size * sizeof(EventType)); memcpy(r + size, r, arr + size - r); }
