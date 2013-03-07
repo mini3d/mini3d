@@ -316,6 +316,8 @@ public:
         return false; // No messages in queue
     }
 
+    void GetIsKeyLeftOrRight(int VK, int VK_L, int VK_R, WPARAM &vKey) { if (vKey == VK) { vKey = (GetKeyState(VK_L) & 0x8000) ? VK_L : VK_R; } }
+
     bool HandleMessage(MSG &message, Event &ev)
     {
         UINT msg = message.message;
@@ -393,11 +395,17 @@ public:
                 static BYTE lpKeyState[256] = {0};
                 GetKeyboardState(lpKeyState);
 
+                // Filter left and right version of shift, control, alt, and windows key
+                WPARAM vKey = wParam;
+                GetIsKeyLeftOrRight(VK_SHIFT, VK_LSHIFT, VK_RSHIFT, vKey);
+                GetIsKeyLeftOrRight(VK_CONTROL, VK_LCONTROL, VK_RCONTROL, vKey);
+                GetIsKeyLeftOrRight(VK_MENU, VK_LMENU, VK_RMENU, vKey);
+
                 Event::Key key = {
                     (lpKeyState[VK_SHIFT]) ? Event::MODIFIER_SHIFT : Event::MODIFIER_NONE &
                     (lpKeyState[VK_CONTROL]) ? Event::MODIFIER_CTRL : Event::MODIFIER_NONE &
                     (lpKeyState[VK_MENU]) ? Event::MODIFIER_ALT : Event::MODIFIER_NONE,
-                    wParam};
+                    vKey};
                 ev.key = key;
 
             } return true;
@@ -434,7 +442,6 @@ private:
 };
 
 IWindow* IWindow::New(const char* title, unsigned int width, unsigned int height) { return new Window_win32(title, width, height); }
-
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
