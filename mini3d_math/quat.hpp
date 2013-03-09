@@ -26,6 +26,16 @@ public:
     inline Quat(const float q[4]) : x(q[0]), y(q[1]), z(q[2]), w(q[3])         {}
     inline Quat(const Quat &q) : x(q.x), y(q.y), z(q.z), w(q.w)                {}
 
+    static Quat FromAxisAngle(float x, float y, float z, float a)
+    {
+        // http://www.flipcode.com/documents/matrfaq.html#Q56
+
+        float sin_a = sin( a * 0.5f );
+        float cos_a = cos( a * 0.5f );
+
+        return Quat( x * sin_a, y * sin_a, z * sin_a, cos_a).Normalized();
+    }
+
 	inline operator float*()                                            { return &x; }
 	inline operator const float*() const                                { return &x; }
 
