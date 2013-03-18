@@ -1,190 +1,169 @@
 
-// Copyright (c) <2011-2012> Daniel Peterson
+// Copyright (c) <2009-2013> Daniel Peterson
 // This file is part of Mini3D <www.mini3d.org>
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
 
-#ifndef MINI3D_ANIMATION_ANIMATION_H
-#define MINI3D_ANIMATION_ANIMATION_H
-
-#include "internal/animationstream.h"
-#include <stdint.h>
-#include <limits.h>
-
-// This animation system is very similar to the one described here:
-// http://bitsquid.blogspot.se/2009/11/bitsquid-low-level-animation-system.html
-// http://bitsquid.blogspot.se/2011/10/low-level-animation-part-2.html
-//
-// The main difference is that the vector data is not compressed and
-// have more track types (location, rotation and scale)
-//
-// ANIMATION STREAM LAYOUT
-//
-// HEADER:
-// 16 bit animation length in frames
-// 16 bit joint count
-//
-// KEY FRAME:
-// 11 bit joint index
-//  5 bit track index
-// 16 bit frame index (30 fps)
-// 32 bit float data x
-// 32 bit float data y
-// 32 bit float data z
-// 32 bit float data w
-//
-// END TRACK KEY FRAME:
-// 11 bit joint index
-//  5 bit track index
-// 16 bit "infintiy" frame index marker (0xFFFF)
-//
-// END STREAM KEY FRAME:
-// 11 bit "empty" joint index (0x0000)
-//  5 bit "empty" track index (0x0000)
-// 16 bit "empty" frame index marker (0x0000)
-//
-
+#ifndef MINI3D_MINI3DANIMATION_H
+#define MINI3D_MINI3DANIMATION_H
 
 namespace mini3d {
 namespace animation {
 
-const unsigned int FRAMES_PER_SECOND = 30;
-const unsigned int MICROSECONDS_PER_SECOND = 1000000;
+////////// ANIMATABLE TYPES ///////////////////////////////////////////////////
 
-const int TRACK_COUNT = 3; // Default is: Location, Rotation, Scale in that order!
-
-const unsigned int LOCATION_TRACK_INDEX = 0;
-const unsigned int ROTATION_TRACK_INDEX = 1;
-const unsigned int SCALE_TRACK_INDEX = 2;
-
-const unsigned int REPEATE_INDEFINITLY = UINT_MAX;
-
-const float IDENTITY_SCALE[4] = {1,1,1,1};
+// Types used as animation targets must have the following member functions
+// Default constructor that zero initializes!
+// T operator +(T rhs);
+// T operator -(T rhs);
+// T operator *(float scalar);
+// T operator /(float scalar);
 
 
-////////// ANIMATION INTERFACE ////////////////////////////////////////////////
+struct Vec4a { 
+    float x,y,z,w;
 
-struct IAnimation { virtual void Update(uint64_t time, float (*state)[TRACK_COUNT][4], float weight = 1.0f) = 0; };
+    Vec4a() : x(0), y(0), z(0), w(0) {}
+    Vec4a(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
+    Vec4a operator*(float s)    { return Vec4a(x*s, y*s, z*s, w*s); }
+    Vec4a operator/(float s)    { return Vec4a(x/s, y/s, z/s, w/s); }
+    Vec4a operator+(Vec4a v)     { return Vec4a(x+v.x, y+v.y, z+v.z, w+v.w); }
+    Vec4a operator-(Vec4a v)     { return Vec4a(x-v.x, y-v.y, z-v.z, w-v.w); }
+};
 
 
 ////////// ANIMATION //////////////////////////////////////////////////////////
 
-struct KeyFrame;
+template <typename T> struct Keyframe { float time; T value; };
 
-class Animation : public IAnimation
+struct ITrack { virtual void Update(float time, float weight = 1.0f) = 0; };
+
+template <typename T> struct Track : ITrack { 
+
+    Track(T* pTarget, Keyframe<T>* keyframes, unsigned int count);
+    void Update(float time, float weight = 1.0f);
+
+private:
+    void UpdateIntervalCache();
+    float Clamp(float value, float min, float max) { return (value < min) ? min : (value > max) ? max : value; }
+
+
+private:
+    T* pTarget;
+    Keyframe<T>* kf;
+    unsigned int count;
+    unsigned int index; // index of current keyframe interval
+
+    // Cache for current keyframe interval
+    float startTime;
+    float endTime;
+    float intervalStartTime;
+    float intervalEndTime;
+    float invIntervalLength;
+    T m[2]; // derivatives at the edges of the current interval
+    T p[2]; // values at the edges of the current interval
+
+};
+
+
+////////// ANIMATION //////////////////////////////////////////////////////////
+
+class Animation
 {
 public:
 
-    Animation(const char* pAnimationStream);
+    Animation(ITrack** pUpdatables, unsigned int count, float length);
     ~Animation();
 
-    uint64_t GetLength() const                      { return (m_length * MICROSECONDS_PER_SECOND) / FRAMES_PER_SECOND; } // TODO: Variable fps?
-    uint64_t GetPosition() const                    { return m_time; }
-    void SetPosition(uint64_t time)                 { if (time < m_time) Init(); m_time = time; }
+    float GetLength() const                         { return m_length; }
+    float GetPosition() const                       { return m_time; }
+    void SetPosition(float time)                    { m_time = time; }
     
-    void Update(uint64_t deltaTime, float (*state)[TRACK_COUNT][4], float weight = 1.0f);
-    static void SetJointMatrix(float m[12], const float loc[4], const float quat[4], const float scale[4]);
-    static void ConcatenateJointMatrices(float m[12], const float parent[12]);
+    void Update(float time, float weight = 1.0f);
 
 private:
-    void Init();
-    bool ReadKeyFrame(unsigned int timeStamp);
-    bool FastForwardStream(unsigned int frameIndex);
+    ITrack ** m_pUpdatables;
+    float m_time;
 
-    AnimationStream m_pStream;
-    KeyFrame (*m_pKeyFrames)[TRACK_COUNT][4]; // We need 4 key frames per track to interpolate the Catmull-Rom splines
-
-    uint64_t m_time;
-
-    unsigned int m_repeatCount;
-    unsigned int m_jointCount;
-    unsigned int m_length;
+    float m_length;
 };
 
-
-////////// ANIMATION BLENDING /////////////////////////////////////////////////
-
-struct BlendBase : public IAnimation
+template <typename T>
+Track<T>::Track(T* pTarget, Keyframe<T>* keyframes, unsigned int count) : pTarget(pTarget), kf(keyframes), count(count), index(1)
 {
-    BlendBase(int childCount) : 
-		m_pChildren(new IAnimation*[childCount]),
-		m_pWeights(new float[childCount]),
-		m_childCount(childCount)
-	{ for (int i=0; i<m_childCount; ++i) { m_pChildren[i] = 0; m_pWeights[i] = 0.0f; } }
+    startTime = kf[0].time;
+    endTime = kf[count - 1].time;
 
-	virtual ~BlendBase() { delete m_pChildren; delete m_pWeights; }
+    UpdateIntervalCache();
+}
 
-    float GetWeight(int index)                      { return m_pWeights[index]; }
-    void SetWeight(int index, float weight)         { m_pWeights[index] = weight; }
-
-    IAnimation* GetAnimation(int index)             { return m_pChildren[index]; }
-    void SetAnimation(int index, IAnimation* pAnim) { m_pChildren[index] = pAnim; }
-
-    virtual void Update(uint64_t deltaTime, float (*state)[TRACK_COUNT][4], float weight = 1.0f) = 0;
-
-protected:
-    IAnimation** m_pChildren;
-    float* m_pWeights;
-	int m_childCount;
-};
-
-
-////////// ADDITIVE BLENDING //////////////////////////////////////////////////
-
-class AdditiveBlend : public BlendBase
+template <typename T>
+void Track<T>::Update(float time, float weight = 1.0f)
 {
-	AdditiveBlend(int childCount) : BlendBase(childCount) {}
-	
-public:
-    void Update(uint64_t deltaTime, float (*state)[TRACK_COUNT][4], float weight = 1.0f) 
+    time = Clamp(time, startTime, endTime);
+
+    // if time has started over (if for example we have looped back to the beginning)
+    if (time < intervalStartTime)
     {
-        for (int i=0; i<m_childCount; ++i) 
-            if (m_pChildren[i])
-                m_pChildren[i]->Update(deltaTime, state, m_pWeights[i]);
-    }
-};
-
-
-////////// CROSS BLENDING /////////////////////////////////////////////////////
-
-const float CROSS_BLEND_EPSILON = 0.001f;
-
-class CrossBlend : public BlendBase
-{ 
-public:
-    CrossBlend(int childCount, float exp = 0.5f) : BlendBase(childCount), m_exp(exp) { }
-
-    float GetExp() const                { return m_transitionFactor; }
-    void SetExp(float factor)           { m_transitionFactor = factor; }
-
-    void Update(uint64_t deltaTime, float (*state)[TRACK_COUNT][4], float weight = 1.0f) 
-    { 
-        m_pWeights[m_targetIndex] = 1.0f;
-
-        for (int i=0; i<m_childCount; ++i)
-        {
-            if (i != m_targetIndex && m_pChildren[i])
-            {
-                // TODO: Needs a more complicated formula for exponential decay based on delta time!
-                m_pWeights[i] = (m_pWeights[i] > CROSS_BLEND_EPSILON) ? m_pWeights[i] * m_exp : 0.0f;
-                m_pWeights[m_targetIndex] -= m_pWeights[i];
-                m_pChildren[i]->Update(deltaTime, state, m_pWeights[i] * weight);
-            }
-        }
-
-        // Update target
-        if (m_pChildren[m_targetIndex]) 
-            m_pChildren[m_targetIndex]->Update(deltaTime,state, m_pWeights[m_targetIndex] * weight);
+        index = 0;
+        UpdateIntervalCache();
     }
 
-private:
-    float m_exp;
-	float m_transitionFactor;
-    unsigned int m_targetIndex;
-};
+    // if we have left the current keyframe interval
+    if (time > intervalEndTime)
+    {
+        // Fast forward to the correct keyframe interval
+        while(time > kf[index].time)
+            ++index;
+
+        UpdateIntervalCache();
+    }
+
+    // Catmull-Rom spline interpolation of keyframes
+    // http://en.wikipedia.org/wiki/Cubic_Hermite_spline
+
+    float t = (time - intervalStartTime) * invIntervalLength;
+    float t2 = t*t;
+    float t3 = t2*t;
+        
+    float h00 =  2*t3 - 3*t2 + 1;
+    float h10 =    t3 - 2*t2 + t;
+    float h01 = -2*t3 + 3*t2 ;
+    float h11 =    t3 - t2;
+
+    *pTarget = p[0] * h00 + m[0] * h10 + p[1] * h01 + m[1] * h11;
+}
+
+template <typename T>
+void Track<T>::UpdateIntervalCache()
+{
+    intervalEndTime = kf[index].time;
+    intervalStartTime = kf[index - 1].time;
+
+    float intervalLength = intervalEndTime - intervalStartTime;
+    invIntervalLength = (intervalLength != 0) ? 1 / intervalLength : 0;
+
+    // keyframe values
+    p[0] = kf[index - 1].value;
+    p[1] = kf[index].value;
+
+    // keyframe derivatives
+    m[0] = m[1] = T();
+        
+    if (index > 1)
+    {
+        float m0Length = (kf[index].time - kf[index - 2].time);
+        m[0] = m0Length ? ((kf[index].value - kf[index - 2].value) / m0Length) * intervalLength : T();
+    }
+
+    if (index < count - 1)
+    {
+        float m1Length = (kf[index + 1].time - kf[index - 1].time);
+        m[1] = m1Length ? ((kf[index + 1].value - kf[index - 1].value) / m1Length) * intervalLength : T();
+    }
+}
 
 }
 }
 
-#endif // MINI3D_ANIMATION_ANIMATION_H
-
+#endif

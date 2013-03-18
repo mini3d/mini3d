@@ -152,6 +152,7 @@ def writeAction(action, file):
         for channel in group.channels:
             pos = channel.data_path.rfind('.')
             if channel.data_path[pos:] == '.rotation_quaternion':
+                print("Found channel: " + channel.data_path)
                 quaternion_channels.append(channel)
         
         # get all unique keyframes
@@ -222,7 +223,7 @@ def writeAction(action, file):
         # write all keyframes with time stamp == minTimeStamp to file
         for keyframe_list in quaternion_keyframe_lists:
             if  keyframe_list[0][0] == minTimeStamp:
-                writeKeyFrame(quaternion_keyframe_lists, keyframe_list, file)                
+                writeKeyFrame(quaternion_keyframe_lists, keyframe_list, file)
                 keyframe_list.pop(0)
 
     # write the end of stream marker
@@ -242,6 +243,7 @@ def writeKeyFrame(quaternion_keyframe_lists, keyframe_list, file):
     
     # write the keyframe
     index = (quaternion_keyframe_lists.index(keyframe_list) << 4) + 1;
+	
     timeStamp = keyframe_list[1][0]
     print("ts: ", timeStamp, " i: ", index)
     fw(struct.pack('=2H', index, timeStamp))
@@ -520,7 +522,7 @@ def writeLengthPrefixedString(string, file):
     fw(struct.pack('='+str(length)+'s', string.encode('UTF-8')))
     
     
-exportAll('G:/projects/software/mini3d/source/assets/mirror.m3d')
+exportAll('c:/users/windows/desktop/mirror.m3d')
 print('Done')
 
 # filename = 'G:\\projects\\software\\mini3d\\source\\assets\\mini3dexporter.py'
