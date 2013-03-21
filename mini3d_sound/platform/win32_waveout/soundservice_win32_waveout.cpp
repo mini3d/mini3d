@@ -11,10 +11,7 @@
 #include <mmsystem.h>
 #include <cstdlib>
 
-// TODO: Is this included with visual studio?
-#include <audiodefs.h>
-
-//#define WAVE_FORMAT_EXTENSIBLE 0xFFFE;
+#include <Mmreg.h>
 
 void mini3d_assert(bool expression, const char* text, ...);
 
