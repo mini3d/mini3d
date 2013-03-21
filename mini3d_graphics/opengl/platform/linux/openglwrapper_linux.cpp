@@ -210,7 +210,7 @@ void glEnable(GLenum cap) { ::glEnable(cap); }
 void glDisable(GLenum cap) { ::glDisable(cap); }
 void glClear(GLbitfield mask) { ::glClear(mask); }
 void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha) { ::glClearColor(red, green, blue, alpha); }
-void glClearDepth(GLclampd depth) { ::glClearDepth(depth); }
+void glClearDepth(GLclampf depth) { ::glClearDepth(depth); }
 void glShadeModel(GLenum mode) { ::glShadeModel(mode); }
 void glDepthFunc(GLenum func) { ::glDepthFunc(func); }
 void glGetIntegerv(GLenum pname, GLint *params) { ::glGetIntegerv(pname, params); }

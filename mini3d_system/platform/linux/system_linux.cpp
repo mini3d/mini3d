@@ -47,7 +47,7 @@ public:
     bool GetJoystickInfo(int id, JoystickInfo &info)            { return false; }
 
 
-    System_linux() : m_screenOrientation(SCREEN_ORIENTATION_PORTRAIT), m_AppState(APP_STATE_FOREGROUND) 
+    System_linux() : m_screenOrientation(SCREEN_ORIENTATION_PORTRAIT)
     {
     }
 
