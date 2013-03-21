@@ -43,7 +43,7 @@ private:
     	if (incWrap(w) == r)
     	{
     		size_t wOffset = w - arr;
-    		size_t rOffset = w - r;
+    		size_t rOffset = r - arr;
 
         	arr = (EventType*)realloc(arr, 2 * size * sizeof(EventType));
         	mini3d_assert(arr, "Out of memory in eventqueue!");

@@ -45,7 +45,7 @@ public:
     unsigned int GetNativeSurfaceWidth(void* nativeSurface) const   { return ((NSView*)nativeSurface).frame.size.width; }
     unsigned int GetNativeSurfaceHeight(void* nativeSurface) const  { return ((NSView*)nativeSurface).frame.size.height; }
 
-    void SwapWindowBuffers(void* nativeSurface)                     { @autoreleasepool { glFlush(); [[(OpenGLNSView*)nativeSurface context] flushBuffer]; }}
+    void SwapWindowBuffers(void* nativeSurface)                     { @autoreleasepool { [[(OpenGLNSView*)nativeSurface context] flushBuffer]; }}
     
     ~Platform_osx()                                                 { @autoreleasepool { [m_pPixelFormat release]; [m_pContext release]; }}
 

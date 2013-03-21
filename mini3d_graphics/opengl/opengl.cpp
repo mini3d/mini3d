@@ -942,7 +942,6 @@ private:
 
     void SetTexture(ITexture* pTexture, unsigned int idD3D, const char* nameOGL)
     {
-        GLenum err = glGetError();
         mini3d_assert(m_pCurrentShaderProgram != 0, "Trying to assign a texture to a sampler without having set a shader program!");
 
         // check if this sampler already has a bound texture
@@ -1138,16 +1137,11 @@ private:
 
         if (m_pCurrentShaderInputLayout == 0)
             return;
-
-        GLenum err;
-
-
+        
         m_pCurrentShaderInputLayout->BindAttributes();
-        err = glGetError();
 
         if (m_pCurrentConstantBuffer != 0)
             m_pCurrentConstantBuffer->ApplyUniforms();
-        err = glGetError();
 
         // Draw the scene
         if (m_IsUsingInstancedAttributes) // && m_pPlatform->VERSION_3_3()) TODO: Move somewhere other than platform
@@ -1159,7 +1153,6 @@ private:
         {
             // TODO: glDrawRangeElements is faster than glDrawElements according to: http://www.spec.org/gwpg/gpc.static/vbo_whitepaper.html
             glDrawElements(GL_TRIANGLES, m_pCurrentIndexBuffer->GetIndexCount(), GL_UNSIGNED_INT, 0);
-            err = glGetError();
         }
 
     }

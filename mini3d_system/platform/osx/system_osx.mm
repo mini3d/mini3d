@@ -34,8 +34,8 @@ using namespace mini3d::system;
 @end
 
 @implementation WindowDelegate { }
-- (void) windowWillClose:(NSNotification*)notification { @autoreleasepool { Event ev = {Event::CLOSE}; m_pEventQueue->AddEvent(ev); }}
-- (void) windowDidResize:(NSNotification *)notification { @autoreleasepool { Event ev = {Event::RESIZE}; m_pEventQueue->AddEvent(ev); }}
+- (void) windowWillClose:(NSNotification*)notification { @autoreleasepool { Event ev = { Event::CLOSE }; m_pEventQueue->AddEvent(ev); }}
+- (void) windowDidResize:(NSNotification *)notification { @autoreleasepool { Event ev = { Event::RESIZE }; m_pEventQueue->AddEvent(ev); }}
 @end
 
 @interface Mini3dNSWindow : NSWindow
@@ -208,10 +208,7 @@ public:
     
     ScreenOrientation GetScreenOrentation() const               { return m_screenOrientation; }
     void SetScreenOrientation(ScreenOrientation orientation)    { m_screenOrientation = orientation; }
-    
-    AppState GetAppState() const                                { return m_AppState; }
-    void SetAppState(AppState state)                            { m_AppState = state; }
-    
+        
     AppLifecycleModel GetAppLifecycleModel() const              { return APP_LIFECYCLE_MODEL_DESKTOP; }
     
     void Terminate()                                            { exit(0); }
@@ -221,9 +218,9 @@ public:
     int GetJoystickId(unsigned int index)                       { return -1; }
     bool GetJoystickInfo(int id, JoystickInfo &info)            { return false; }
     
-    
-    System_osx() : m_screenOrientation(SCREEN_ORIENTATION_PORTRAIT), m_AppState(APP_STATE_FOREGROUND)
+    System_osx() : m_screenOrientation(SCREEN_ORIENTATION_PORTRAIT)
     {
+        
     }
     
     ~System_osx()
@@ -238,7 +235,6 @@ public:
 private:
     static System_osx System;
     ScreenOrientation m_screenOrientation;
-    AppState m_AppState;
 };
     
 System_osx System_osx::System;
