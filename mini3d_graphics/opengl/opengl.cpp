@@ -3,7 +3,7 @@
 // This file is part of Mini3D <www.mini3d.org>
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
-#include "../graphicsservice.hpp"
+#include "../../graphics.hpp"
 
 #ifdef MINI3D_GRAPHICSSERVICE_OPENGL
 
@@ -74,7 +74,7 @@ struct Compatibility_OpenGL : ICompatibility
     uint MaxTextureSize() const                                                 { return m_maxTextureSize; }
     bool TextureFormat(IBitmapTexture::Format format) const                     { return true; } // TODO: Fix this
     bool RenderTargetTextureFormat(IRenderTargetTexture::Format format) const   { return true; } // TODO: Fix this
-    const char* ShaderLanguage() const                                          { return "GLSL"; } // TODO: implementation specific, could also be GLSL ES!
+    ShaderLanguage GetShaderLanguage() const                                    { return GLSL; } // TODO: implementation specific, could also be GLSL ES!
     const char* PixelShaderVersion() const                                      { return m_PixelShaderVersion; }
     const char* VertexShaderVersion() const                                     { return m_VertexShaderVersion; }
     uint VertexStreamCount() const                                              { return 1; } // TODO: Fix this
@@ -209,8 +209,9 @@ struct PixelShader_OpenGL : IPixelShader
         glCompileShader(m_glShader);
 
         GLsizei length;
+
         glGetShaderInfoLog(m_glShader, LOG_TEXT_MAX_LENGTH, &length, logText);
-        mini3d_assert(length == 0, "Pixel shader compilation log:\n%s\n", logText);
+        //mini3d_assert(length == 0, "Pixel shader compilation log:\n%s\n", logText);
     }
 
 private:
@@ -234,7 +235,7 @@ struct VertexShader_OpenGL : IVertexShader
 
         GLsizei length;
         glGetShaderInfoLog(m_glShader, LOG_TEXT_MAX_LENGTH, &length, logText);
-        mini3d_assert(length == 0, "Vertex shader compilation log:\n%s\n", logText);
+        //mini3d_assert(length == 0, "Vertex shader compilation log:\n%s\n", logText);
     }
 
 private:
@@ -516,6 +517,7 @@ struct ConstantBuffer_OpenGL : IConstantBuffer
             case GL_FLOAT_VEC3: return 12;
             case GL_INT_VEC4:
             case GL_FLOAT_VEC4: return 16;
+            case GL_FLOAT_MAT4: return 64;
         }
         mini3d_assert(false, "Unknown Uniform type!");
         return 0;
@@ -528,10 +530,13 @@ struct ConstantBuffer_OpenGL : IConstantBuffer
     
     void ApplyUniforms()
     {
+        
+
         for (unsigned int i = 0; i < m_uniformCount; ++i)
         {
             if (m_pUniforms[i].size != 1)
             {
+                // TODO: This needs to be fixed, will not be correct for non GL_FLOAT_VEC4 types (such as matrices)!
                 glUniform4fv(m_pUniforms[i].location, m_pUniforms[i].size, (const GLfloat*)(m_pData + m_pUniforms[i].offsetInBytes));
                 continue;
             }
@@ -542,6 +547,7 @@ struct ConstantBuffer_OpenGL : IConstantBuffer
                 case GL_FLOAT_VEC2: glUniform2fv(m_pUniforms[i].location, m_pUniforms[i].size, (GLfloat*)(m_pData + m_pUniforms[i].offsetInBytes)); continue;
                 case GL_FLOAT_VEC3: glUniform3fv(m_pUniforms[i].location, m_pUniforms[i].size, (GLfloat*)(m_pData + m_pUniforms[i].offsetInBytes)); continue;
                 case GL_FLOAT_VEC4: glUniform4fv(m_pUniforms[i].location, m_pUniforms[i].size, (GLfloat*)(m_pData + m_pUniforms[i].offsetInBytes)); continue;
+                case GL_FLOAT_MAT4: glUniformMatrix4fv(m_pUniforms[i].location, m_pUniforms[i].size, GL_FALSE, (GLfloat*)(m_pData + m_pUniforms[i].offsetInBytes)); continue;
                 case GL_INT:
                 case GL_INT_VEC2:
                 case GL_INT_VEC3:

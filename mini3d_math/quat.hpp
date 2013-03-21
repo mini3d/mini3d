@@ -68,7 +68,7 @@ public:
     inline const Quat Conjugated() const                                { return Quat(-x, -y, -z, w); }
     inline void Negate()                                                { x = -x, y = -y, z = -z, w = -w; }
     inline const Quat Negated() const                                   { return Quat(-x, -y, -z, -w); }
-    inline void Normalize()                                             { float s = sqrt(x*x + y*y + z*z + w*w); x /= s, y /= s, z /= s, w /= w; }
+    inline void Normalize()                                             { float s = sqrt(x*x + y*y + z*z + w*w); x /= s, y /= s, z /= s, w /= s; }
     inline const Quat Normalized() const                                { float s = sqrt(x*x + y*y + z*z + w*w); return Quat(x / s, y / s, z / s, w / s); }
 
     // TODO: Assignment operator

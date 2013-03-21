@@ -7,6 +7,8 @@
 #ifndef MINI3D_MATH_VEC4_H
 #define MINI3D_MATH_VEC4_H
 
+// TODO: Near equals
+
 #include <cmath>
 
 namespace mini3d {
@@ -70,18 +72,6 @@ public:
     inline void Normalize()                                             { float s = sqrt(x*x + y*y + z*z + w*w); x /= s, y /= s, z /= s, w /= w; }
     inline const Vec4 Normalized() const                                { float s = sqrt(x*x + y*y + z*z + w*w); return Vec4(x / s, y / s, z / s, w / s); }
 
-    static Vec4 PerspectiveRH(float fov, float aspect, float znear, float zfar)
-    {
-        Vec4 v;
-	    v.x = 1.0f/tan(fov/2.0f);
-	    v.y = v.x * aspect;
-	    v.z = zfar / (znear-zfar);
-	    v.w = v.z * znear;
-        
-        return v;
-    }
-
-    // TODO: Near equals
 };
 
 inline const Vec4 operator *(float s, const Vec4 &v)                    { return v * s; }

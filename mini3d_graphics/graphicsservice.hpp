@@ -6,12 +6,6 @@
 #ifndef MINI3D_IGRAPHICSSERVICE_H
 #define MINI3D_IGRAPHICSSERVICE_H
 
-// Decides what implementation to use for graphcis
-//#define MINI3D_GRAPHICSSERVICE_DIRECT3D_11
-#define MINI3D_GRAPHICSSERVICE_OPENGL
-
-// TODO: When a resource is set. it should be tested if it needs to be reloaded. if an out of memory error occurs then the resource might still be loadable at a later time, without altering any parameters.
-
 typedef void* MINI3D_WINDOW;
 
 #include "compatibility.hpp"
@@ -71,7 +65,7 @@ struct IGraphicsService
 
 	virtual void SetCullMode(CullMode cullMode) = 0;
 
-    // Todo: move to render targets
+    // TODO: move to render targets?
 	virtual void Clear(float depth) = 0;
 	virtual void Clear(float r, float g, float b, float a) = 0;
 	virtual void Clear(float r, float g, float b, float a, float depth) = 0;

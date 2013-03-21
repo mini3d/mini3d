@@ -3,7 +3,7 @@
 // This file is part of Mini3D <www.mini3d.org>
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
-#include "../graphicsservice.hpp"
+#include "../../graphics.hpp"
 
 #ifdef _WIN32
 #ifdef MINI3D_GRAPHICSSERVICE_DIRECT3D_11
@@ -12,9 +12,8 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-//#include <d3d11.h>
-#include <D3Dcompiler.h>
 #include <d3dx11.h>
+#include <D3Dcompiler.h>
 #include <dxgi.h>
 #include <cstdio>
 
@@ -767,6 +766,7 @@ public:
         m_screenState = SCREEN_STATE_WINDOWED; 
         m_pNativeWindow = 0;
         m_pDepthStencilTexture = 0;
+        m_pRenderTargetView = 0;
         m_width = 0;
         m_height = 0;
 
@@ -782,40 +782,44 @@ public:
 
         m_pNativeWindow = pNativeWindow;
 
-        UpdateSize();
-
         DXGI_SWAP_CHAIN_DESC desc = { {m_width, m_height, { 0, 1 }, DXGI_FORMAT_R8G8B8A8_UNORM }, {1}, DXGI_USAGE_RENDER_TARGET_OUTPUT, 2, (HWND)pNativeWindow, TRUE };
         
         IDXGIFactory * pFactory = m_pGraphicsService->GetFactory();
         mini3d_assert(S_OK == pFactory->CreateSwapChain(pDevice, &desc, &m_pSwapChain), "Unable to create swap chain!");
 
-        ID3D11Texture2D* pBackBuffer;
-        mini3d_assert(S_OK == m_pSwapChain->GetBuffer(0, __uuidof( ID3D11Texture2D ), (LPVOID*)&pBackBuffer), "Unable to get back buffer for swap chain!");
-        mini3d_assert(S_OK == pDevice->CreateRenderTargetView(pBackBuffer, NULL, &m_pRenderTargetView), "Unable to create render target view for swap chain back buffer!");
-       
+        UpdateSize();
 
         // Get the size of the client area of the window 
         m_depthTestEnabled = depthTestEnabled;
-        
-        pFactory->Release();
     }
 
     void UpdateSize()
     {
-        unsigned int width, height;
         RECT rect;
         GetClientRect((HWND)m_pNativeWindow, &rect);
 
-        width = rect.right - rect.left;
-        height = rect.bottom - rect.top;
-
-        D3D11_VIEWPORT viewport = { 0.0f, 0.0f, (float)width, (float)height, 0.0f, 1.0f };
-        m_viewportD3D11 = viewport;
+        unsigned int width = rect.right - rect.left;
+        unsigned int height = rect.bottom - rect.top;
 
         if (width != m_width || height != m_height)
         {
+            D3D11_VIEWPORT viewport = { 0.0f, 0.0f, (float)width, (float)height, 0.0f, 1.0f };
+            m_viewportD3D11 = viewport;
+
+            ID3D11Device* pDevice = m_pGraphicsService->GetDevice();
+
+            if (m_pRenderTargetView)
+                m_pRenderTargetView->Release();
+
             if (m_pSwapChain != 0)
-                m_pSwapChain->ResizeBuffers(2, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+            {
+                m_pSwapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
+
+                ID3D11Texture2D* pBackBuffer;
+                mini3d_assert(S_OK == m_pSwapChain->GetBuffer(0, __uuidof( ID3D11Texture2D ), (LPVOID*)&pBackBuffer), "Unable to get back buffer for swap chain!");
+                mini3d_assert(S_OK == pDevice->CreateRenderTargetView(pBackBuffer, NULL, &m_pRenderTargetView), "Unable to create render target view for swap chain back buffer!");
+                pBackBuffer->Release();
+            }
 
             if (m_pDepthStencilTexture != 0)
             {
@@ -828,7 +832,6 @@ public:
 
             if (m_depthTestEnabled)
             {
-                ID3D11Device* pDevice = m_pGraphicsService->GetDevice();
                 D3D11_TEXTURE2D_DESC desc = { width, height, 1, 1, DXGI_FORMAT_D24_UNORM_S8_UINT, {1}, D3D11_USAGE_DEFAULT, D3D11_BIND_DEPTH_STENCIL };
                 mini3d_assert(S_OK == pDevice->CreateTexture2D(&desc, NULL, &m_pDepthStencilTexture), "Unable to create depth stencil texture!");
             
@@ -838,6 +841,14 @@ public:
 
             m_width = width;
             m_height = height;
+
+            // If this was the currently bound render target it will have been automatically
+            // unbound by direct x. Rebind it!
+            if (m_pGraphicsService->GetRenderTarget() == this)
+            {
+                m_pGraphicsService->SetRenderTarget(0);
+                m_pGraphicsService->SetRenderTarget(this);
+            }
         }
     }
 
@@ -896,7 +907,7 @@ public:
     uint MaxTextureSize() const                                                 { return 4096; }
     bool TextureFormat(IBitmapTexture::Format format) const                     { return true; } // TODO: Fix this
     bool RenderTargetTextureFormat(IRenderTargetTexture::Format format) const   { return true; } // TODO: Fix this
-    const char* ShaderLanguage() const                                          { return "HLSL"; }
+    ShaderLanguage GetShaderLanguage() const                                    { return HLSL; }
     const char* PixelShaderVersion() const                                      { return 0; }
     const char* VertexShaderVersion() const                                     { return 0; }
     uint VertexStreamCount() const                                              { return 32; }
@@ -922,7 +933,7 @@ public:
     ID3D11DeviceContext* GetContext() const                                         { return m_pContext; }
     IDXGIFactory* GetFactory() const                                                { return m_pFactory; }
 
-    ~GraphicsService_D3D11()                                                        { m_pDevice->Release(); m_pContext->Release(); m_pFactory->Release(); }
+    ~GraphicsService_D3D11() { m_pDevice->Release(); m_pContext->Release(); m_pFactory->Release(); }
 
     GraphicsService_D3D11()
     {
@@ -1063,13 +1074,17 @@ public:
 
     void SetRenderTarget(IRenderTarget* pRenderTarget)
     {
+        // If we are setting a render target window, make sure it has correct resolutoin
+        if (pRenderTarget && pRenderTarget->GetType() == IWindowRenderTarget::TYPE)
+            ((WindowRenderTarget_D3D11*)pRenderTarget)->UpdateSize();
+
         // Dont set the rendertarget if it is already set
         if (pRenderTarget == m_pCurrentRenderTarget) 
             return;
 
         if (pRenderTarget == 0)
         {
-            m_pContext->OMSetRenderTargets(1, 0, 0);
+            m_pContext->OMSetRenderTargets(0, 0, 0);
             m_pCurrentRenderTarget = 0;
             return;
         }

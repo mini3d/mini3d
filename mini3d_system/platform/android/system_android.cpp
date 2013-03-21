@@ -1,9 +1,7 @@
 
 #ifdef __ANDROID__
 
-#include "../../window.hpp"
-#include "../../system.hpp"
-#include "../common/eventqueue.hpp"
+#include <EGL/egl.h>
 
 #include <jni.h>
 #include <errno.h>
@@ -19,6 +17,10 @@
 #include <android/looper.h>
 #include <android/input.h>
 #include <android/native_activity.h>
+
+#include "../../window.hpp"
+#include "../../system.hpp"
+#include "../common/eventqueue.hpp"
 
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __VA_ARGS__))
 #define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "native-activity", __VA_ARGS__))
@@ -64,10 +66,10 @@ bool HandleEvent(AInputEvent* pEvent, Event &ev);
 
 ////////// ANDROID CALLBACKS //////////////////////////////////////////////////
 
-static void onStart(ANativeActivity* activity) 		{ } // Do nothing
-static void onStop(ANativeActivity* activity) 		{ } // Do nothing
-static void onResume(ANativeActivity* activity) 	{ } // Do nothing
-static void onPause(ANativeActivity* activity)  	{ SystemEvent ev = { SystemEvent::SAVE_STATE }; systemEventQueue.AddEventSync(ev); }
+static void onStart(ANativeActivity* activity) 		{ } // TODO: implement
+static void onStop(ANativeActivity* activity) 		{ } // TODO: implement
+static void onResume(ANativeActivity* activity) 	{ } // TODO: implement
+static void onPause(ANativeActivity* activity)  	{ } // TODO: implement
 static void onLowMemory(ANativeActivity* activity) 	{ } // Do nothing, you should not be wasting resources in the first place!
 
 static void* onSaveInstanceState(ANativeActivity* activity, size_t* outLen) 			{ outLen = 0; return 0; } // Do nothing
@@ -83,8 +85,9 @@ static void onNativeWindowDestroyed(ANativeActivity* activity, ANativeWindow* wi
 
 static void onDestroy(ANativeActivity* activity)
 {
-    SystemEvent ev = { SystemEvent::TERMINATE };
-    systemEventQueue.AddEventSync(ev);
+	// TODO: Add life cycle events!
+    // SystemEvent ev = { SystemEvent::TERMINATE };
+    // systemEventQueue.AddEventSync(ev);
 
     pthread_mutex_destroy(&mutex);
 
@@ -106,14 +109,12 @@ static void onConfigurationChanged(ANativeActivity* activity)
     AConfiguration_delete(config);
 }
 
-
 ////////// NATIVE ENTRY POINT /////////////////////////////////////////////////
 
 void ANativeActivity_onCreate(ANativeActivity* activity, void* savedState, size_t savedStateSize)
 {
 	nativeActivity = activity;
 
-	sleep(5);
 	LOGI("Creating: %p\n", activity);
 
     activity->callbacks->onDestroy = onDestroy;
@@ -151,9 +152,6 @@ public:
     ScreenOrientation GetScreenOrentation() const               { return m_screenOrientation; }
     void SetScreenOrientation(ScreenOrientation orientation)    { m_screenOrientation = orientation; }
 
-    AppState GetAppState() const                                { return m_AppState; }
-    void SetAppState(AppState state)                            { m_AppState = state; }
-
     AppLifecycleModel GetAppLifecycleModel() const              { return APP_LIFECYCLE_MODEL_MOBILE; }
 
     void Terminate()                                            { } // TODO: Implement
@@ -164,7 +162,7 @@ public:
     bool GetJoystickInfo(int id, JoystickInfo &info)            { return false; }
 
 
-    System_android() : m_screenOrientation(SCREEN_ORIENTATION_PORTRAIT), m_AppState(APP_STATE_FOREGROUND) 
+    System_android() : m_screenOrientation(SCREEN_ORIENTATION_PORTRAIT)
     {
     }
 
@@ -180,7 +178,6 @@ public:
 private:
     static System_android System;
     ScreenOrientation m_screenOrientation;
-    AppState m_AppState;
 };
 
 System_android System_android::System;

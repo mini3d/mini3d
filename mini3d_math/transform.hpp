@@ -10,36 +10,35 @@
 #include "vec4.hpp"
 #include "quat.hpp"
 
+#include <cstring>
+
 namespace mini3d {
 namespace math {
 
-// Note that scaling only applies to the most local transform!
-// To avoid misstakes only use uniform scaling
 
-// TODO: Switch to this http://wscg.zcu.cz/wscg2012/short/A29-full.pdf and single float for uniform scaling
+// Todo: Fix this with new animation import
+// void RotateAboutPoint(Vec4 v)               { pos = v - rot.Transform(v); }
+
+// TODO: This class has a bug somewhere for the flow LookAtRH -> ToViewProjectionMatrix
+// if rotation is near unity, the object will be scaled unless the quaternion rotation is normalized
+// calculations for look at rh must be based on non-similar axises!
 
 ////////// TRANSFORM //////////////////////////////////////////////////////////
 
 struct Transform
 {
-    static float ZERO[3][4];
-    static float IDENTITY[3][4];
-    static float IDENTITY_ZERO_SCALE[3][4];
-    static float ZERO_IDENTITY_SCALE[3][4];
-    
     Vec4 pos;
     Quat rot;
-    Vec4 scale;
+    float scale;
 
-    Transform() { };
+    Transform() : pos(Vec4(0.0f)), rot(Quat(0.0f)), scale(0.0f) { };
     Transform(const Transform &t) : pos(t.pos), rot(t.rot), scale(t.scale) { };
-    Transform(const float pos[4], const float rot[4], const float scale[4]) : pos(pos), rot(rot), scale(scale) {}
-    Transform(const float posRotScale[3][4]) : pos(posRotScale[0]), rot(posRotScale[1]), scale(posRotScale[2]) {}
+    Transform(const float pos[4], const float rot[4], float scale) : pos(pos), rot(rot), scale(scale) {}
+
+    static Transform Identity() { return Transform(Vec4(0.0f), Quat(1.0f, 0.0f, 0.0f, 0.0f), 1.0f); }
 
     Transform operator *(const Transform &t)    { return Transform(*this * t.pos, rot*t.rot, scale*t.scale); } 
     Vec4 operator *(const Vec4 &v) const        { return pos + rot.Transform(v * scale); }    
-
-    void RotateAboutPoint(Vec4 v)               { pos = v - rot.Transform(v); }
 
     static Transform LookAtRH(const Vec4 eye, const Vec4 at, const Vec4 up)
     {
@@ -51,8 +50,9 @@ struct Transform
         float w4 = 1.0f / (4.0f * w);
         
         return Transform(   Vec4(-u.Dot(eye), -v.Dot(eye), -n.Dot(eye), 0), // Position
-                            Quat((v.z-n.y) * w4, (n.x-u.z) * w4, (u.y-v.x) * w4, -w), // Rotation
-                            Vec4(1,1,1,0)); // Scale
+                            Quat((v.z-n.y) * w4, (n.x-u.z) * w4, (u.y-v.x) * w4, -w).Normalized(), // Rotation
+                            1); // Scale
+
     }
 
     void ToMatrix(float m[16]) 
@@ -71,30 +71,42 @@ struct Transform
         float zz      = rot.z * rot.z;
         float zw      = rot.z * rot.w;
 
-        m[0]  = (1 - 2 * ( yy + zz )) * scale.x;
+        m[0]  = (1 - 2 * ( yy + zz )) * scale;
         m[1]  =     2 * ( xy - zw );
         m[2]  =     2 * ( xz + yw );
         m[3]  = pos.x;
 
         m[4]  =     2 * ( xy + zw );
-        m[5]  = (1 - 2 * ( xx + zz )) * scale.y;
+        m[5]  = (1 - 2 * ( xx + zz )) * scale;
         m[6]  =     2 * ( yz - xw );
-        m[4]  = pos.y;
+        m[7]  = pos.y;
 
         m[8]  =     2 * ( xz - yw );
         m[9]  =     2 * ( yz + xw );
-        m[10] = (1 - 2 * ( xx + yy )) * scale.z;
-        m[12] = pos.z;
+        m[10] = (1 - 2 * ( xx + yy )) * scale;
+        m[11] = pos.z;
 
         m[12] = m[13] = m[14] = 0;
         m[15] = 1;
     }
-};
 
-float Transform::ZERO[3][4] = {{0,0,0,0}, {0,0,0,0}, {0,0,0,0}};
-float Transform::IDENTITY[3][4] = {{0,0,0,0}, {0,0,0,1}, {1,1,1,1}};
-float Transform::IDENTITY_ZERO_SCALE[3][4] = {{0,0,0,0}, {0,0,0,1}, {0,0,0,0}};
-float Transform::ZERO_IDENTITY_SCALE[3][4] = {{0,0,0,0}, {0,0,0,0}, {1,1,1,1}};
+    void ToViewProjectionMatrix(float m[16], float fov, float aspect, float znear, float zfar)
+    {
+
+        float w = 1.0f/tan(fov/2.0f);
+	    float h = w * aspect;
+	    float z1 = zfar / (znear-zfar);
+	    float z2 = z1 * znear;
+        
+        ToMatrix(m);
+        *((Vec4*)m + 3) = -*((Vec4*)m + 2);
+        *((Vec4*)m) *= w;
+        *((Vec4*)m + 1) *= h;
+        *((Vec4*)m + 2) *= z1;
+        m[11] += z2;
+    }
+
+};
 
 }
 }

@@ -5,7 +5,7 @@
 
 #ifdef _WIN32
 
-#include "../../../graphicsservice.hpp"
+#include "../../../../graphics.hpp"
 #ifdef MINI3D_GRAPHICSSERVICE_OPENGL
 
 #include "../iplatform.hpp"

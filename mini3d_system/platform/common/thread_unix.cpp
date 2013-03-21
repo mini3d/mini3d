@@ -8,7 +8,7 @@
 
 #include <pthread.h>
 #include <unistd.h>
-#include "../../threads.h"
+#include "../../threads.hpp"
 
 namespace mini3d {
 namespace system {
@@ -23,7 +23,7 @@ struct Mutex : IMutex
     void Unlock()   { pthread_mutex_unlock(&m_mutex); }
 
 private:
-    pthread_mutex m_mutex;
+    pthread_mutex_t m_mutex;
 };
 
 IMutex* IMutex::New() { return new Mutex(); }
@@ -38,7 +38,7 @@ struct Thread : IThread
     Thread(IRunnable* runnable)     { m_runnable = runnable; isRunning = false; }
     ~Thread()                       { }
     void Run()                      { if (!isRunning) pthread_create(&m_thread, 0, &StartThreadProc, m_runnable); }
-    void Join()                     { pthread_join(*(pthread_t*)t, 0); isRunning = false; }
+    void Join()                     { pthread_join(m_thread, 0); isRunning = false; }
 
 private:
     IRunnable* m_runnable;
@@ -47,7 +47,7 @@ private:
 };
 
 IThread* IThread::New(IRunnable* runnable)          { return new Thread(runnable); }
-void IThread::SleepCurrentThread(unsigned int ms)   { usleep(milliseconds * 1000); }
+void IThread::SleepCurrentThread(unsigned int ms)   { usleep(ms * 1000); }
 
 }
 }
