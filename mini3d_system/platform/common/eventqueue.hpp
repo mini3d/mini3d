@@ -26,7 +26,7 @@ struct EventQueue
 public:
     struct Lock { Lock(pthread_mutex_t* m)  { x = m; pthread_mutex_lock(x); } ~Lock() { pthread_mutex_unlock(x); } private: pthread_mutex_t* x; };
     
-    EventQueue(unsigned int cap = 1)        { pthread_mutex_init(&mutex, 0); arr = r = w = SafeMalloc((size = cap) * sizeof(EventType)); }
+    EventQueue(unsigned int cap = 256)      { pthread_mutex_init(&mutex, 0); arr = r = w = SafeMalloc((size = cap) * sizeof(EventType)); }
     ~EventQueue()                           { pthread_mutex_destroy(&mutex); free(arr); }
     
     void AddEvent(EventType &ev)			{ Lock guard(&mutex); GrowAsNeeded(); *w = ev; w = incWrap(w); m_hasSynced = false; }
