@@ -191,7 +191,7 @@ public:
             ID3D10Blob* pError;
             ID3D10Blob* pShaderBlob;
         
-            D3DX11CompileFromMemory(pShaderBytes, sizeInBytes, "pixelshader.hlsl", NULL, NULL, "main", pProfile, D3DCOMPILE_ENABLE_BACKWARDS_COMPATIBILITY, 0, NULL, &pShaderBlob, &pError, NULL);
+            D3DCompile(pShaderBytes, sizeInBytes, "pixelshader.hlsl", NULL, NULL, "main", pProfile, D3DCOMPILE_ENABLE_BACKWARDS_COMPATIBILITY, 0, &pShaderBlob, &pError);
 
             // TODO: Fix
             if (pError != 0)
@@ -262,7 +262,7 @@ public:
             ID3D10Blob* pError;
             ID3D10Blob* pShaderBlob;
         
-            D3DX11CompileFromMemory(pShaderBytes, sizeInBytes, "vertexshader.hlsl", NULL, NULL, "main", pProfile, D3DCOMPILE_ENABLE_BACKWARDS_COMPATIBILITY, 0, NULL, &pShaderBlob, &pError, NULL);
+            D3DCompile(pShaderBytes, sizeInBytes, "vertexshader.hlsl", NULL, NULL, "main", pProfile, D3DCOMPILE_ENABLE_BACKWARDS_COMPATIBILITY, 0, &pShaderBlob, &pError);
 
             // TODO: Fix
             if (pError != 0)
