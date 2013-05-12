@@ -5,6 +5,8 @@
 
 
 #include "mini3dimporter.hpp"
+#include "../../assetlibrary.hpp"
+
 
 using namespace mini3d::import;
 
@@ -27,9 +29,9 @@ const char* ReadBytes(FILE* file, unsigned int size)
     return data;
 }
 
-AssetImporter* Mini3dImporter::LoadSceneFromFile(const char* filename)
+AssetLibrary* Mini3dImporter::LoadSceneFromFile(const char* filename)
 {
-    AssetImporter* pI = new AssetImporter();
+    AssetLibrary* pI = new AssetLibrary();
     
 	FILE *file = fopen(filename, "rb");
     mini3d_assert(file != 0, "Failed to open file %s", filename);
@@ -39,19 +41,14 @@ AssetImporter* Mini3dImporter::LoadSceneFromFile(const char* filename)
     // Read mesh count
     pI->meshCount = ReadShort(file);
 
-    // Read mesh name <-> index map
-    pI->meshNameIndexMap = new NameIndexMap[pI->meshCount];
-    for (unsigned int i = 0; i < pI->meshCount; ++i)
-    {
-        pI->meshNameIndexMap[i].name = ReadString(file);
-        pI->meshNameIndexMap[i].index = ReadShort(file);
-    }
-
     // read meshes
     pI->meshes = new Mesh[pI->meshCount];
     for (unsigned int i = 0; i < pI->meshCount; ++i)
     {
         Mesh* mesh = pI->meshes + i;
+
+        // Name
+        mesh->name = ReadString(file);
 
         // Get vertex data
         mesh->vertexSizeInBytes = ReadShort(file);
@@ -72,19 +69,14 @@ AssetImporter* Mini3dImporter::LoadSceneFromFile(const char* filename)
     // Read armature count
     pI->armatureCount = ReadShort(file);
 
-    // Read armature name <-> index map
-    pI->armatureNameIndexMap = new NameIndexMap[pI->armatureCount];
-    for (unsigned int i = 0; i < pI->armatureCount; ++i)
-    {
-        pI->armatureNameIndexMap[i].name = ReadString(file);
-        pI->armatureNameIndexMap[i].index = ReadShort(file);
-    }
-
     // read armature joints
     pI->armatures = new Armature[pI->armatureCount];
     for (unsigned int i = 0; i < pI->armatureCount; ++i)
     {
         Armature* armature = pI->armatures + i;
+
+        // Name
+        armature->name = ReadString(file);
 
         // Get the number of armatures
         armature->jointCount = ReadShort(file);
@@ -93,12 +85,15 @@ AssetImporter* Mini3dImporter::LoadSceneFromFile(const char* filename)
         armature->joints = new Joint[armature->jointCount];
         for (unsigned int j = 0; j < armature->jointCount; ++j)
         {
-            armature->joints[j].parentIndex = ReadShort(file);
-            armature->joints[j].offset[0] = ReadFloat(file);
-            armature->joints[j].offset[1] = ReadFloat(file);
-            armature->joints[j].offset[2] = ReadFloat(file);
-            armature->joints[j].offset[3] = 0;
-            armature->joints[j].roll = ReadFloat(file);
+            Joint* joint = armature->joints + j;
+
+            joint->name = ReadString(file);
+            joint->parentIndex = ReadShort(file);
+            joint->offset[0] = ReadFloat(file);
+            joint->offset[1] = ReadFloat(file);
+            joint->offset[2] = ReadFloat(file);
+            joint->offset[3] = 0;
+            joint->roll = ReadFloat(file);
         }
     }
 
@@ -108,22 +103,34 @@ AssetImporter* Mini3dImporter::LoadSceneFromFile(const char* filename)
     // Read action count
     pI->actionCount = ReadShort(file);
 
-    // Read action name <-> index map
-    pI->actionNameIndexMap = new NameIndexMap[pI->actionCount];
-    for (unsigned int i = 0; i < pI->actionCount; ++i)
-    {
-        pI->actionNameIndexMap[i].name = ReadString(file);
-        pI->actionNameIndexMap[i].index = ReadShort(file);
-    }
-
     // read actions
     pI->actions = new Action[pI->actionCount];
     for (unsigned int i = 0; i < pI->actionCount; ++i)
     {
         Action* action = pI->actions + i;
-        uint16_t animationStreamSizeInBytes = ReadShort(file);
-        //action->keyframeCount = ReadShort(file);
-        action->animationData = ReadBytes(file, animationStreamSizeInBytes);
+
+        action->name = ReadString(file);
+        action->channelCount = ReadShort(file);
+
+        action->channels = new Action::Channel[action->channelCount];
+        
+        // Read all channels
+        for (unsigned int i = 0; i < action->channelCount; ++i)
+        {
+            Action::Channel* channel = action->channels + i;
+
+            channel->boneName = ReadString(file);
+            channel->targetName = ReadString(file);
+
+            channel->subindexCount = ReadShort(file);
+            channel->keyframeCount = ReadShort(file);
+
+            unsigned int animationDataCount = (channel->subindexCount + 1) * channel->keyframeCount;
+            channel->animationData = new float[animationDataCount];
+
+            for (unsigned int j = 0; j < animationDataCount; ++j)
+                channel->animationData[j] = ReadFloat(file);
+        }
     }
 
 
@@ -134,19 +141,14 @@ AssetImporter* Mini3dImporter::LoadSceneFromFile(const char* filename)
     // Read material count
     pI->materialCount = ReadShort(file);
 
-    // Read material name <-> index map
-    pI->materialNameIndexMap = new NameIndexMap[pI->materialCount];
-    for (unsigned int i = 0; i < pI->materialCount; ++i)
-    {
-        pI->materialNameIndexMap[i].name = ReadString(file);
-        pI->materialNameIndexMap[i].index = ReadShort(file);
-    }
-
     // read materials
     pI->materials = new Material[pI->materialCount];
     for (unsigned int i = 0; i < pI->materialCount; ++i)
     {
         Material* material = pI->materials + i;
+
+        material->name = ReadString(file);
+
         material->textureCount = ReadShort(file);
         material->textureIndices = new unsigned int[material->textureCount];
         for (unsigned int j = 0; j < material->textureCount; ++j)
@@ -158,19 +160,12 @@ AssetImporter* Mini3dImporter::LoadSceneFromFile(const char* filename)
     // Read texture count
     pI->textureCount = ReadShort(file);
 
-    // Read texture name <-> index map
-    pI->textureNameIndexMap = new NameIndexMap[pI->textureCount];
-    for (unsigned int i = 0; i < pI->textureCount; ++i)
-    {
-        pI->textureNameIndexMap[i].name = ReadString(file);
-        pI->textureNameIndexMap[i].index = ReadShort(file);
-    }
-
     // read texture file names
     pI->textures = new Texture[pI->textureCount];
     for (unsigned int i = 0; i < pI->textureCount; ++i)
     {
         Texture* texture = pI->textures + i;
+        texture->name = ReadString(file);
         texture->filename = ReadString(file);
     }
 
@@ -180,36 +175,24 @@ AssetImporter* Mini3dImporter::LoadSceneFromFile(const char* filename)
     // Read scene count
     pI->sceneCount = ReadShort(file);
 
-    // Read scene name <-> index map
-    pI->sceneNameIndexMap = new NameIndexMap[pI->sceneCount];
-    for (unsigned int i = 0; i < pI->sceneCount; ++i)
-    {
-        pI->sceneNameIndexMap[i].name = ReadString(file);
-        pI->sceneNameIndexMap[i].index = ReadShort(file);
-    }
-
     pI->scenes = new Scene[pI->sceneCount];
     for (unsigned int i = 0; i < pI->sceneCount; ++i)
     {
         Scene* scene = pI->scenes + i;
+
+        scene->name = ReadString(file);
 
         
         ////////// OBJECTS ////////////////////////////////////////////////////
         
         scene->objectCount = ReadShort(file);
 
-        // Read scene name <-> index map
-        scene->objectNameIndexMap = new NameIndexMap[scene->objectCount];
-        for (unsigned int j = 0; j < scene->objectCount; ++j)
-        {
-            scene->objectNameIndexMap[j].name = ReadString(file);
-            scene->objectNameIndexMap[j].index = ReadShort(file);
-        }
-
         scene->objects = new Object[scene->objectCount];
         for (unsigned int j = 0; j < scene->objectCount; ++j)
         {
             Object* object = scene->objects + j;
+
+            object->name = ReadString(file);
 
             object->position[0] = ReadFloat(file);
             object->position[1] = ReadFloat(file);
@@ -234,18 +217,12 @@ AssetImporter* Mini3dImporter::LoadSceneFromFile(const char* filename)
 
         scene->lightCount = ReadShort(file);
 
-        // Read scene name <-> index map
-        scene->lightNameIndexMap = new NameIndexMap[scene->lightCount];
-        for (unsigned int j = 0; j < scene->lightCount; ++j)
-        {
-            scene->lightNameIndexMap[j].name = ReadString(file);
-            scene->lightNameIndexMap[j].index = ReadShort(file);
-        }
-
         scene->lights = new Light[scene->lightCount];
         for (unsigned int j = 0; j < scene->lightCount; ++j)
         {
             Light* light = scene->lights + j;
+
+            light->name = ReadString(file);
 
             light->position[0] = ReadFloat(file);
             light->position[1] = ReadFloat(file);
@@ -272,18 +249,12 @@ AssetImporter* Mini3dImporter::LoadSceneFromFile(const char* filename)
 
         scene->cameraCount = ReadShort(file);
 
-        // Read scene name <-> index map
-        scene->cameraNameIndexMap = new NameIndexMap[scene->cameraCount];
-        for (unsigned int j = 0; j < scene->cameraCount; ++j)
-        {
-            scene->cameraNameIndexMap[j].name = ReadString(file);
-            scene->cameraNameIndexMap[j].index = ReadShort(file);
-        }
-
         scene->cameras = new Camera[scene->cameraCount];
         for (unsigned int j = 0; j < scene->cameraCount; ++j)
         {
             Camera* camera = scene->cameras + j;
+
+            camera->name = ReadString(file);
 
             camera->position[0] = ReadFloat(file);
             camera->position[1] = ReadFloat(file);
@@ -306,7 +277,7 @@ AssetImporter* Mini3dImporter::LoadSceneFromFile(const char* filename)
     
     long pos = ftell(file);
     fseek (file, 0, SEEK_END);
-    mini3d_assert (pos == ftell(file), "Entire file was not parsed. This idicates a parsing error!");
+    mini3d_assert (pos == ftell(file), "Entire file was not parsed. This indicates a parsing error!");
 
     fclose(file);
 

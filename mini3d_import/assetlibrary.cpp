@@ -4,7 +4,7 @@
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
 
-#include "assetimporter.hpp"
+#include "assetlibrary.hpp"
 #include "fileparsers/mini3d/mini3dimporter.hpp"
 
 #include <cstring>
@@ -16,7 +16,7 @@ void mini3d_assert(bool expression, const char* text, ...);
 
 using namespace mini3d::import;
 
-AssetImporter::AssetImporter() :
+AssetLibrary::AssetLibrary() :
     sceneCount(0),
     scenes(0),
     meshCount(0),
@@ -32,7 +32,7 @@ AssetImporter::AssetImporter() :
 {
 }
 
-AssetImporter* AssetImporter::LoadFromFile(const char* filename)
+AssetLibrary* AssetLibrary::LoadFromFile(const char* filename)
 {
     const char* pos = strrchr(filename, '.');
     mini3d_assert(pos != 0, "Faled to identify file ending for file: %s", filename);
@@ -45,16 +45,16 @@ AssetImporter* AssetImporter::LoadFromFile(const char* filename)
     if (!strcmp(fileEnding, "m3d"))
     {
         Mini3dImporter* pMini3dImp = new Mini3dImporter();
-	    AssetImporter* pAssetImporter = pMini3dImp->LoadSceneFromFile(filename);
+	    AssetLibrary* pAssetLibrary = pMini3dImp->LoadSceneFromFile(filename);
         delete pMini3dImp;
-        return pAssetImporter;
+        return pAssetLibrary;
     }
 
     mini3d_assert(false, "Failed to find a matching file parser for file: %s", filename);
     return 0;
 }
 
-AssetImporter::~AssetImporter()
+AssetLibrary::~AssetLibrary()
 {
     delete[] scenes;
     delete[] meshes;
@@ -135,12 +135,18 @@ Armature::~Armature()
 }
 
 
-Action::Action() :
-    animationData(0)
+Action::Action() : channels(0)
 {
 }
 
 Action::~Action()
+{
+    delete[] channels;
+}
+
+Action::Channel::Channel() : animationData(0) {}
+
+Action::Channel::~Channel()
 {
     delete[] animationData;
 }

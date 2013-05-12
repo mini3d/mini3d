@@ -8,19 +8,18 @@
 #define MINI3D_MINI3DIMPORTER_H
 
 #include <cstdio>
-#include "../../assetimporter.hpp"
 
 void mini3d_assert(bool expression, const char* text, ...);
 
 namespace mini3d {
 namespace import {
 
-struct AssetImporter;
+struct AssetLibrary;
 
 class Mini3dImporter
 {
 public:
-    AssetImporter* LoadSceneFromFile(const char* filename);
+    AssetLibrary* LoadSceneFromFile(const char* filename);
 
 };
 

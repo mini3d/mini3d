@@ -4,12 +4,9 @@
 // It is distributed under the MIT Software License <www.mini3d.org/license.php>
 
 
-#ifndef MINI3D_MATH_H
-#define MINI3D_MATH_H
+#ifndef MINI3D_IMPORT_H
+#define MINI3D_IMPORT_H
 
-#include "mini3d_math/quat.hpp"
-#include "mini3d_math/Vec3.hpp"
-#include "mini3d_math/Vec4.hpp"
-#include "mini3d_math/transform.hpp"
+#include "mini3d_import/assetlibrary.hpp"
 
 #endif

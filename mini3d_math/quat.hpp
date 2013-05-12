@@ -7,6 +7,7 @@
 #ifndef MINI3D_MATH_QUAT_H
 #define MINI3D_MATH_QUAT_H
 
+#include "vec3.hpp"
 #include "vec4.hpp"
 
 namespace mini3d {
@@ -62,7 +63,9 @@ public:
     inline const Quat operator /(float s) const                         { return Quat(x / s, y / s, z / s, w / s); }
 
     inline Vec4 Transform(const Vec4 v) const                           { Vec4 r(x,y,z,0); return v + (r+r).Cross3(r.Cross3(v) + v*w); }
+    inline Vec3 Transform(const Vec3 v) const                           { Vec3 r(x,y,z); return v + (r+r).Cross(r.Cross(v) + v*w); }
     inline static Vec4 Transform(const Quat &q, const Vec4 &v)          { return q.Transform(v); }
+    inline static Vec3 Transform(const Quat &q, const Vec3 &v)          { return q.Transform(v); }
 
     inline void Conjugate()                                             { x = -x, y = -y, z = -z; }
     inline const Quat Conjugated() const                                { return Quat(-x, -y, -z, w); }

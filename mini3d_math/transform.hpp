@@ -7,7 +7,7 @@
 #ifndef MINI3D_MATH_TRANSFORM_H
 #define MINI3D_MATH_TRANSFORM_H
 
-#include "vec4.hpp"
+#include "vec3.hpp"
 #include "quat.hpp"
 
 #include <cstring>
@@ -27,29 +27,29 @@ namespace math {
 
 struct Transform
 {
-    Vec4 pos;
+    Vec3 pos;
     Quat rot;
     float scale;
 
-    Transform() : pos(Vec4(0.0f)), rot(Quat(0.0f)), scale(0.0f) { };
+    Transform() : pos(Vec3(0.0f)), rot(Quat(0.0f)), scale(0.0f) { };
     Transform(const Transform &t) : pos(t.pos), rot(t.rot), scale(t.scale) { };
-    Transform(const float pos[4], const float rot[4], float scale) : pos(pos), rot(rot), scale(scale) {}
+    Transform(const float pos[3], const float rot[4], float scale) : pos(pos), rot(rot), scale(scale) {}
 
-    static Transform Identity() { return Transform(Vec4(0.0f), Quat(1.0f, 0.0f, 0.0f, 0.0f), 1.0f); }
+    static Transform Identity() { return Transform(Vec3(0.0f), Quat(1.0f, 0.0f, 0.0f, 0.0f), 1.0f); }
 
     Transform operator *(const Transform &t)    { return Transform(*this * t.pos, rot*t.rot, scale*t.scale); } 
-    Vec4 operator *(const Vec4 &v) const        { return pos + rot.Transform(v * scale); }    
+    Vec3 operator *(const Vec3 &v) const        { return pos + rot.Transform(v * scale); }    
 
-    static Transform LookAtRH(const Vec4 eye, const Vec4 at, const Vec4 up)
+    static Transform LookAtRH(const Vec3 eye, const Vec3 at, const Vec3 up)
     {
-        Vec4 n = (eye - at).Normalized();
-        Vec4 u = up.Cross3(n).Normalized();
-        Vec4 v = n.Cross3(u);
+        Vec3 n = (eye - at).Normalized();
+        Vec3 u = up.Cross(n).Normalized();
+        Vec3 v = n.Cross(u);
 
         float w = sqrtf(1.0f + u.x + v.y + n.z) * 0.5f;
         float w4 = 1.0f / (4.0f * w);
         
-        return Transform(   Vec4(-u.Dot(eye), -v.Dot(eye), -n.Dot(eye), 0), // Position
+        return Transform(   Vec3(-u.Dot(eye), -v.Dot(eye), -n.Dot(eye)), // Position
                             Quat((v.z-n.y) * w4, (n.x-u.z) * w4, (u.y-v.x) * w4, -w).Normalized(), // Rotation
                             1); // Scale
 
