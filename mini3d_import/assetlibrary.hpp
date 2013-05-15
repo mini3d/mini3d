@@ -162,6 +162,7 @@ struct Action : public NamedResource
     Action();
     ~Action();
     
+    float length;
     unsigned int channelCount;
     Channel* channels;
 };

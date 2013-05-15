@@ -7,7 +7,7 @@
 
 using namespace mini3d::animation;
 
-Animation::Animation(ITrack** pUpdatables, unsigned int count, float length) : m_pUpdatables(pUpdatables), m_count(count), m_length(length)
+Animation::Animation(ITrack** pTrack, unsigned int count, float length) : m_pTracks(pTrack), m_count(count), m_length(length)
 {
     m_state = STATE_STOPPED;
 }
@@ -37,6 +37,6 @@ void Animation::Update(float timeStep, float weight)
     if (m_state == STATE_PLAYING)
     {
         for (unsigned int i = 0; i < m_count; ++i)
-            m_pUpdatables[i]->Update(m_time, weight);
+            m_pTracks[i]->Update(m_time, weight);
     }
 };

@@ -25,7 +25,7 @@ public:
 
     void AddAnimation(Animation* pAnim)    { m_animations[m_animationCount++] = pAnim; }
     void RemoveAnimation(Animation* pAnim) { for (unsigned int i = 0; i < m_animationCount; ++i) if (m_animations[i] == pAnim) m_animations[i] = m_animations[--m_animationCount]; }
-    void Update(float timeStep)         { for (unsigned int i = 0; i < m_animationCount; ++i) m_animations[i]->Update(timeStep, 1.0f); }
+    void Update(float timeStep)            { for (unsigned int i = 0; i < m_animationCount; ++i) m_animations[i]->Update(timeStep, 1.0f); }
 
 private:
     Animation* m_animations[ANIMATION_MANAGER_MAX_ANIMATIONS_COUNT];

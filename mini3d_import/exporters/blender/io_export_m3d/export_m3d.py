@@ -30,32 +30,46 @@ def writeMesh(mesh, file):
     writeLengthPrefixedString(mesh.name, file)
     
     #find the vertex attributes for this mesh
-    #TODO: attribute data should be stored globally and not in scene
     attributes = None
-    if len(mesh.materials) > 0 and len(bpy.data.scenes) > 0:
-
-        size = len(bpy.data.scenes[0].attribute_groups)
-        index = bpy.data.scenes[0].active_attribute_group
-        
-        if size > index:
-            attributes = [i.type for i in bpy.data.scenes[0].attribute_groups[index].attributes]
+    try:
+        group = bpy.data.scenes["Mini3d Settings"].attribute_groups[mesh.attribute_group]
+        attributes = [i.type for i in group.attributes]
+    except:
+        print("No attributes found for mesh ", mesh.name, ". Using defaults")
+        print("Settings: ", bpy.data.scenes["Mini3d Settings"])
+        print("Group Name: ", mesh.attribute_group)
+        print("Group: ", bpy.data.scenes["Mini3d Settings"].attribute_groups[mesh.attribute_group])
+        pass
     
     if attributes is None:
         attributes = ['POSITION', 'NORMAL', 'TEXTURE']
     
     # gather texture coordinates
     texCo = [[0,0] for vert in mesh.vertices];
-
+    col = [[1,1,1] for vert in mesh.vertices];
+    
     if len(mesh.tessface_uv_textures) > 0:
         for face in mesh.tessfaces:
-            uv = mesh.tessface_uv_textures[0].data[face.index]
-            texCo[face.vertices[0]] = uv.uv1
-            texCo[face.vertices[1]] = uv.uv2
-            texCo[face.vertices[2]] = uv.uv3
+            faceData = mesh.tessface_uv_textures[0].data[face.index]
+            
+            texCo[face.vertices[0]] = faceData.uv1
+            texCo[face.vertices[1]] = faceData.uv2
+            texCo[face.vertices[2]] = faceData.uv3
 
             if len(face.vertices) > 3:
-                texCo[face.vertices[3]] = uv.uv4           
-    
+                texCo[face.vertices[3]] = faceData.uv4           
+
+    if len(mesh.tessface_vertex_colors) > 0:
+        for face in mesh.tessfaces:
+            faceData = mesh.tessface_vertex_colors[0].data[face.index]
+            col[face.vertices[0]] = faceData.color1
+            col[face.vertices[1]] = faceData.color2
+            col[face.vertices[2]] = faceData.color3
+
+            if len(face.vertices) > 3:
+                col[face.vertices[3]] = faceData.color4
+
+                
     # write the size of a vertex in bytes
     vertexSizeInBytes = 0;
     for i in range(0, len(attributes)):
@@ -67,7 +81,9 @@ def writeMesh(mesh, file):
             vertexSizeInBytes += 2 * 4
         elif attributes[i] == 'GROUPS': 
             vertexSizeInBytes += 8 * 4
-    
+        elif attributes[i] == 'COLOR': 
+            vertexSizeInBytes += 3 * 4
+            
     fw(struct.pack('=H', vertexSizeInBytes))
 
     # write the number of vertices
@@ -85,13 +101,19 @@ def writeMesh(mesh, file):
             elif attributes[j] == 'TEXTURE': 
                 fw(struct.pack('=2f', texCo[i][0], texCo[i][1]))
             elif attributes[j] == 'GROUPS':
-                vertex_groups = [(grp.group, grp.weight) for grp in mesh.vertex.groups]
+                vertex_groups = [(grp.group, grp.weight) for grp in mesh.vertices[i].groups]
                 
-                # add make sure there are at least 4 vertex groups
+                # make sure there are at least 4 vertex groups
                 for x in range(len(vertex_groups),4):
                     vertex_groups.append((0,0))
                 
                 sorted_vertex_groups = sorted(vertex_groups, key=itemgetter(1), reverse=True)
+
+                for grp in sorted_vertex_groups:
+                    print("grp: ", grp)
+
+                print ("Sum: ", sorted_vertex_groups[0][1] + sorted_vertex_groups[1][1] + sorted_vertex_groups[2][1] + sorted_vertex_groups[3][1])
+                    
                 fw(struct.pack('=4f',
                     float(sorted_vertex_groups[0][0]),
                     float(sorted_vertex_groups[1][0]),
@@ -102,7 +124,10 @@ def writeMesh(mesh, file):
                     sorted_vertex_groups[1][1],
                     sorted_vertex_groups[2][1],
                     sorted_vertex_groups[3][1]))
-
+                    
+            elif attributes[j] == 'COLOR':
+                fw(struct.pack('=3f', col[i][0], col[i][1], col[i][2]))
+                
     # set indices
     indices=[]
     for face in mesh.tessfaces:
@@ -180,6 +205,9 @@ def writeAction(action, file):
     # write name
     writeLengthPrefixedString(action.name, file)
 
+    #write length
+    fw(struct.pack('=f', action.frame_range[1] / 30.0))
+    
     #group fcurves by data_path name
     channels = { fcurve.data_path : [] for fcurve in action.fcurves }
     
@@ -189,24 +217,24 @@ def writeAction(action, file):
     fw(struct.pack('=H', len(channels)))
     
     #write channels to file
-    for key in channels:
+    for channelName in channels:
 
         boneName = ""
         target = ""
-        match = re.match('pose.bones\["([^"]*)"\]\.(.*)', key)
+        match = re.match('pose.bones\["([^"]*)"\]\.(.*)', channelName)
 
         if match:
             boneName = match.groups()[0]
             target = match.groups()[1]
         else:
-            target = fcurve.data_path
+            target = channelName
 
         #write track bone name
         writeLengthPrefixedString(boneName, file)
         writeLengthPrefixedString(target, file)
 
         #find all keyframes for all channels in group    
-        fcurves = channels[key]
+        fcurves = channels[channelName]
         keyframes = set()
         for fcurve in fcurves:
             for keyframe in fcurve.keyframe_points:
@@ -229,9 +257,18 @@ def writeAction(action, file):
                 values[fcurve.array_index] = fcurve.evaluate(keyframe)
             
             fw(struct.pack('=f', keyframe / 30.0))
+            print("Keyframe: ", keyframe, " Value: ", values)
             
-            for value in values:
-                fw(struct.pack('=f', value))
+            if len(values) == 4:
+                fw(struct.pack('=f', values[1]))
+                fw(struct.pack('=f', values[2]))
+                fw(struct.pack('=f', values[3]))
+                fw(struct.pack('=f', values[0]))
+                
+            else:
+                for value in values:
+                    fw(struct.pack('=f', value))
+
 
                 
 ########### WRITE MATERIAL ####################################################
@@ -268,6 +305,13 @@ def writeImage(image, file):
    
 ########### WRITE LAMP ########################################################
 
+def safeRead(object, field, default):
+    data = object.bl_rna.properties.get(field)
+    if data:
+        return data
+    else:
+        return default
+
 def writeLamp(lampObject, file):
     fw = file.write
 
@@ -286,10 +330,13 @@ def writeLamp(lampObject, file):
         lampObject.rotation_quaternion[3],
         lampObject.rotation_quaternion[0]))
 
+    spot_size = safeRead(lamp, "spot_size", 0)
+    spot_blend = safeRead(lamp, "spot_blend", 0)
+        
     # shadow buffer settings
     fw(struct.pack('=4f',
-        lamp.spot_size - lamp.spot_size * lamp.spot_blend,
-        lamp.spot_size,
+        spot_size - spot_size * spot_blend,
+        spot_size,
         lamp.shadow_buffer_clip_start,
         lamp.shadow_buffer_clip_end))
         

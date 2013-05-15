@@ -17,11 +17,12 @@ template <typename T> struct Keyframe { float time; T value; };
 
 struct ITrack { virtual void Update(float time, float weight = 1.0f) = 0; virtual ~ITrack() {}; };
 
-template <typename T> struct Track : ITrack { 
+template <typename T, bool normalize = false> struct Track : ITrack { 
 
     Track(T* pTarget, Keyframe<T>* keyframes, unsigned int count);
     ~Track() {};
     void Update(float time, float weight = 1.0f);
+    void SetNormalize(bool value) { m_normalize = value; }
 
 private:
     void UpdateIntervalCache();
@@ -49,8 +50,8 @@ private:
 
 ////////// TEMPLATE TYPE IMPLEMENTATIONS //////////////////////////////////////
 
-template <typename T>
-Track<T>::Track(T* pTarget, Keyframe<T>* keyframes, unsigned int count) : pTarget(pTarget), kf(keyframes), count(count), index(1)
+template <typename T, bool normalize>
+Track<T, normalize>::Track(T* pTarget, Keyframe<T>* keyframes, unsigned int count) : pTarget(pTarget), kf(keyframes), count(count), index(1)
 {
     startTime = kf[0].time;
     endTime = kf[count - 1].time;
@@ -58,8 +59,8 @@ Track<T>::Track(T* pTarget, Keyframe<T>* keyframes, unsigned int count) : pTarge
     UpdateIntervalCache();
 }
 
-template <typename T>
-void Track<T>::Update(float time, float weight)
+template <typename T, bool normalize>
+void Track<T, normalize>::Update(float time, float weight)
 {
     time = Clamp(time, startTime, endTime);
 
@@ -91,10 +92,13 @@ void Track<T>::Update(float time, float weight)
 
     if (hasM0) *pTarget = *pTarget + m[0] * (t3 - 2*t2 + t);
     if (hasM1) *pTarget = *pTarget + m[1] * (t3 - t2);
+
+    if (normalize)
+        pTarget->Normalize();
 }
 
-template <typename T>
-void Track<T>::UpdateIntervalCache()
+template <typename T, bool normalize>
+void Track<T, normalize>::UpdateIntervalCache()
 {
     intervalEndTime = kf[index].time;
     intervalStartTime = kf[index - 1].time;
@@ -127,7 +131,6 @@ void Track<T>::UpdateIntervalCache()
             hasM1 = true;
             m[1] = ((kf[index + 1].value - kf[index - 1].value) / m1Length) * intervalLength;
         }
-        
     }
 }
 

@@ -211,7 +211,7 @@ struct PixelShader_OpenGL : IPixelShader
         GLsizei length;
 
         glGetShaderInfoLog(m_glShader, LOG_TEXT_MAX_LENGTH, &length, logText);
-        //mini3d_assert(length == 0, "Pixel shader compilation log:\n%s\n", logText);
+        mini3d_assert(length == 0, "Pixel shader compilation log:\n%s\n", logText);
     }
 
 private:
@@ -235,7 +235,7 @@ struct VertexShader_OpenGL : IVertexShader
 
         GLsizei length;
         glGetShaderInfoLog(m_glShader, LOG_TEXT_MAX_LENGTH, &length, logText);
-        //mini3d_assert(length == 0, "Vertex shader compilation log:\n%s\n", logText);
+        mini3d_assert(length == 0, "Vertex shader compilation log:\n%s\n", logText);
     }
 
 private:
@@ -534,15 +534,9 @@ struct ConstantBuffer_OpenGL : IConstantBuffer
 
         for (unsigned int i = 0; i < m_uniformCount; ++i)
         {
-            if (m_pUniforms[i].size != 1)
-            {
-                // TODO: This needs to be fixed, will not be correct for non GL_FLOAT_VEC4 types (such as matrices)!
-                glUniform4fv(m_pUniforms[i].location, m_pUniforms[i].size, (const GLfloat*)(m_pData + m_pUniforms[i].offsetInBytes));
-                continue;
-            }
-
             switch(m_pUniforms[i].type)
             {
+                               
                 case GL_FLOAT: glUniform1fv(m_pUniforms[i].location, m_pUniforms[i].size, (GLfloat*)(m_pData + m_pUniforms[i].offsetInBytes)); continue;
                 case GL_FLOAT_VEC2: glUniform2fv(m_pUniforms[i].location, m_pUniforms[i].size, (GLfloat*)(m_pData + m_pUniforms[i].offsetInBytes)); continue;
                 case GL_FLOAT_VEC3: glUniform3fv(m_pUniforms[i].location, m_pUniforms[i].size, (GLfloat*)(m_pData + m_pUniforms[i].offsetInBytes)); continue;

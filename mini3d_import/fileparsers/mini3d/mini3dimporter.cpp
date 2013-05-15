@@ -110,6 +110,7 @@ AssetLibrary* Mini3dImporter::LoadSceneFromFile(const char* filename)
         Action* action = pI->actions + i;
 
         action->name = ReadString(file);
+        action->length = ReadFloat(file);
         action->channelCount = ReadShort(file);
 
         action->channels = new Action::Channel[action->channelCount];

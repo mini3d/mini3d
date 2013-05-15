@@ -25,16 +25,11 @@ def register_props() :
     bpy.types.Action.export =  bpy.props.BoolProperty(default=True)
     bpy.types.Material.export = bpy.props.BoolProperty(default=True) 
     bpy.types.Scene.export = bpy.props.BoolProperty(default=True)
+    bpy.types.Camera.export = bpy.props.BoolProperty(default=True)
+    bpy.types.Lamp.export = bpy.props.BoolProperty(default=True)
     
-    bpy.types.WindowManager.active_object = bpy.props.IntProperty() 
-    bpy.types.WindowManager.active_mesh = bpy.props.IntProperty()  
-    bpy.types.WindowManager.active_armature = bpy.props.IntProperty()  
-    bpy.types.WindowManager.active_action = bpy.props.IntProperty()  
-    bpy.types.WindowManager.active_material = bpy.props.IntProperty()  
-    bpy.types.WindowManager.active_scene = bpy.props.IntProperty()  
-
-    bpy.types.Mesh.attributes = bpy.props.CollectionProperty(type=AttributeProperty)
-    bpy.types.Mesh.active_attribute = bpy.props.IntProperty()
+    bpy.types.Mesh.attribute_group = bpy.props.StringProperty()
+    bpy.types.Scene.attribute_groups = bpy.props.CollectionProperty(type=AttributePropertyGroup)
 
     
 def unregister_props() :
@@ -44,16 +39,11 @@ def unregister_props() :
     del bpy.types.Action.export
     del bpy.types.Material.export
     del bpy.types.Scene.export
+    del bpy.types.Camera.export
+    del bpy.types.Lamp.export
     
-    del bpy.types.WindowManager.active_object
-    del bpy.types.WindowManager.active_mesh
-    del bpy.types.WindowManager.active_armature
-    del bpy.types.WindowManager.active_action 
-    del bpy.types.WindowManager.active_material
-    del bpy.types.WindowManager.active_scene
-    
-    del bpy.types.Mesh.attributes
-    del bpy.types.Mesh.active_attribute
+    del bpy.types.Mesh.attribute_group
+    del bpy.types.Scene.attribute_groups
 
 def menu_func(self, context):
     self.layout.operator(ExportM3DOperator.bl_idname, text="Mini3d (.m3d)")
@@ -76,4 +66,3 @@ def unregister():
 
 if __name__ == "__main__":
     register()
-

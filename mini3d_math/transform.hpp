@@ -35,7 +35,7 @@ struct Transform
     Transform(const Transform &t) : pos(t.pos), rot(t.rot), scale(t.scale) { };
     Transform(const float pos[3], const float rot[4], float scale) : pos(pos), rot(rot), scale(scale) {}
 
-    static Transform Identity() { return Transform(Vec3(0.0f), Quat(1.0f, 0.0f, 0.0f, 0.0f), 1.0f); }
+    static Transform Identity() { return Transform(Vec3(0.0f), Quat(0.0f, 0.0f, 0.0f, 1.0f), 1.0f); }
 
     Transform operator *(const Transform &t)    { return Transform(*this * t.pos, rot*t.rot, scale*t.scale); } 
     Vec3 operator *(const Vec3 &v) const        { return pos + rot.Transform(v * scale); }    

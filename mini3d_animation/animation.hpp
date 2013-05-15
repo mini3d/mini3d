@@ -22,7 +22,7 @@ public:
 
     enum State { STATE_PLAYING = 0, STATE_PAUSED = 1, STATE_STOPPED = 2 };
 
-    Animation(ITrack** pUpdatables, unsigned int count, float length);
+    Animation(ITrack** pTrack, unsigned int count, float length);
     ~Animation() {};
 
     void Play();
@@ -36,7 +36,7 @@ public:
     void Update(float timeStep, float weight = 1.0f);
 
 private:
-    ITrack ** m_pUpdatables;
+    ITrack** m_pTracks;
     unsigned int m_count;
     float m_time;
     float m_length;
