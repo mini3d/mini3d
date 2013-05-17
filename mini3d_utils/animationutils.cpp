@@ -54,23 +54,30 @@ void AnimationUtils::BoneTransformsToMatrices(float boneMatrices[4][16], Transfo
 {
 
     Transform tmp[4];
+    Vec3 offsets[4];
 
     for (unsigned int i = 0; i < armature->jointCount; ++i)
     {
         Joint* joint = armature->joints + i;
 
-        Transform offset(Vec3(joint->offset), Quat(0,0,0,1), 1);
-        Transform offset2(-Vec3(joint->offset), Quat(0,0,0,1), 1);
-
-        if (joint->parentIndex == mini3d::import::NO_BONE_PARENT)
+        if (joint->parentIndex == NO_BONE_PARENT)
         {
-    
+            offsets[i] = Vec3(joint->offset);
+
+            Transform offset(offsets[i], Quat(0,0,0,1), 1);
+            Transform offset2(-offsets[i], Quat(0,0,0,1), 1);
+
             tmp[i] = offset * transforms[i] * offset2;
             tmp[i].ToMatrix(boneMatrices[i]);
         }
         else
         {
-            tmp[i] = tmp[joint->parentIndex] * offset2 * transforms[i] * offset;
+            offsets[i] = offsets[joint->parentIndex] + Vec3(joint->offset);
+
+            Transform offset(offsets[i], Quat(0,0,0,1), 1);
+            Transform offset2(-offsets[i], Quat(0,0,0,1), 1);
+
+            tmp[i] = tmp[joint->parentIndex] * offset * transforms[i] * offset2;
             tmp[i].ToMatrix(boneMatrices[i]);
         }
     }
