@@ -92,8 +92,11 @@ AssetLibrary* Mini3dImporter::LoadSceneFromFile(const char* filename)
             joint->offset[0] = ReadFloat(file);
             joint->offset[1] = ReadFloat(file);
             joint->offset[2] = ReadFloat(file);
-            joint->offset[3] = 0;
-            joint->roll = ReadFloat(file);
+            
+            joint->roll[0] =  ReadFloat(file);
+            joint->roll[1] =  ReadFloat(file);
+            joint->roll[2] =  ReadFloat(file);
+            joint->roll[3] =  ReadFloat(file);
         }
     }
 

@@ -56,7 +56,12 @@ public:
 
     inline const Quat operator +(const Quat &q2) const                  { return Quat(x + q2.x, y + q2.y, z + q2.z, w + q2.w); }
     inline const Quat operator -(const Quat &q2) const                  { return Quat(x - q2.x, y - q2.y, z - q2.z, w - q2.w); }
-    inline const Quat operator *(const Quat &q) const                   { return Quat(w*q.x+x*q.w+y*q.z-z*q.y, w*q.y-x*q.z+y*q.w+z*q.x, w*q.z+x*q.y-y*q.x+z*q.w, w*q.w-x*q.x-y*q.y-z*q.z); }
+    
+    inline const Quat operator *(const Quat &q) const                   { return Quat(  w*q.x + x*q.w + y*q.z - z*q.y, 
+                                                                                        w*q.y - x*q.z + y*q.w + z*q.x, 
+                                                                                        w*q.z + x*q.y - y*q.x + z*q.w, 
+                                                                                        w*q.w - x*q.x - y*q.y - z*q.z); }
+
     inline const Quat operator /(const Quat &q) const                   { return operator *(q.Conjugated()); }
 
     inline const Quat operator *(float s) const                         { return Quat(x * s, y * s, z * s, w * s); }
@@ -71,8 +76,10 @@ public:
     inline const Quat Conjugated() const                                { return Quat(-x, -y, -z, w); }
     inline void Negate()                                                { x = -x, y = -y, z = -z, w = -w; }
     inline const Quat Negated() const                                   { return Quat(-x, -y, -z, -w); }
-    inline void Normalize()                                             { float s = sqrt(x*x + y*y + z*z + w*w); x /= s, y /= s, z /= s, w /= s; }
-    inline const Quat Normalized() const                                { float s = sqrt(x*x + y*y + z*z + w*w); return Quat(x / s, y / s, z / s, w / s); }
+    inline void Normalize()                                             { float s = sqrt(x*x + y*y + z*z + w*w); if (s != 0.0f) { x /= s, y /= s, z /= s, w /= s; } }
+    inline const Quat Normalized() const                                { float s = sqrt(x*x + y*y + z*z + w*w); return (s != 0.0f) ? Quat(x / s, y / s, z / s, w / s) : Quat(0,0,0,1); }
+    inline void RotateAxis(Quat rot)                                    { *this = rot * *this / rot; }
+    inline const Quat RotatedAxis(Quat rot) const                       { return rot * *this / rot; }
 
     // TODO: Assignment operator
     // TODO: Near equals

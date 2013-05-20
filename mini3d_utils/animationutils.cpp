@@ -35,11 +35,12 @@ Animation* AnimationUtils::BoneAnimationFromAction(Action* action, Armature* arm
         Action::Channel* channel = action->channels + i;
 
         unsigned int j;
+        // TODO: Optimize (should do binary search)
         for (j = 0; j < armature->jointCount; ++j)
             if (!strcmp(armature->joints[j].name, channel->boneName))
                 break;
 
-        mini3d_assert((j < armature->jointCount), "Can't find transform index for bone %s for action %s on armature %s", channel->boneName, action->name, armature->name);
+        mini3d_assert((j < armature->jointCount), "Can't find transform index for bone %s and action %s on armature %s", channel->boneName, action->name, armature->name);
 
         if (!strcmp(channel->targetName, "location"))
             tracks[i] = new Track<Vec3>(&targets[j].pos, (Keyframe<Vec3>*)channel->animationData, channel->keyframeCount);
@@ -50,35 +51,17 @@ Animation* AnimationUtils::BoneAnimationFromAction(Action* action, Armature* arm
     return new Animation(tracks, action->channelCount, action->length);
 }
 
-void AnimationUtils::BoneTransformsToMatrices(float boneMatrices[4][16], Transform transforms[4], Armature* armature)
+void AnimationUtils::BoneTransformsToMatrices(float boneMatrices[4][16], Transform transforms[4], const Armature* armature)
 {
-
-    Transform tmp[4];
-    Vec3 offsets[4];
-
     for (unsigned int i = 0; i < armature->jointCount; ++i)
     {
         Joint* joint = armature->joints + i;
+        transforms[i].rot.RotateAxis(joint->roll);
+        transforms[i].pos = Vec3(joint->offset) + transforms[i] * -Vec3(joint->offset);
 
-        if (joint->parentIndex == NO_BONE_PARENT)
-        {
-            offsets[i] = Vec3(joint->offset);
+        if (joint->parentIndex != NO_BONE_PARENT)
+            transforms[i] = transforms[joint->parentIndex] * transforms[i];
 
-            Transform offset(offsets[i], Quat(0,0,0,1), 1);
-            Transform offset2(-offsets[i], Quat(0,0,0,1), 1);
-
-            tmp[i] = offset * transforms[i] * offset2;
-            tmp[i].ToMatrix(boneMatrices[i]);
-        }
-        else
-        {
-            offsets[i] = offsets[joint->parentIndex] + Vec3(joint->offset);
-
-            Transform offset(offsets[i], Quat(0,0,0,1), 1);
-            Transform offset2(-offsets[i], Quat(0,0,0,1), 1);
-
-            tmp[i] = tmp[joint->parentIndex] * offset * transforms[i] * offset2;
-            tmp[i].ToMatrix(boneMatrices[i]);
-        }
+        transforms[i].ToMatrix(boneMatrices[i]);
     }
 }

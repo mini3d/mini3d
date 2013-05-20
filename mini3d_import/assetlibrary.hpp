@@ -131,7 +131,7 @@ struct Joint : public NamedResource
     const char* name;
     unsigned int parentIndex;
 	float offset[4];
-    float roll;
+    float roll[4];
 };
 
 struct Armature : public NamedResource

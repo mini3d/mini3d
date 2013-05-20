@@ -22,7 +22,7 @@ struct AnimationUtils
 {
     static Animation* AnimationFromAction(Action* action, Transform* target);
     static Animation* BoneAnimationFromAction(Action* action, Armature* armature, Transform targets[4]);
-    static void BoneTransformsToMatrices(float boneMatrices[4][16], Transform transforms[4], Armature* armature);
+    static void BoneTransformsToMatrices(float boneMatrices[4][16], Transform transforms[4], const Armature* armature);
 };
 
 }

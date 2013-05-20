@@ -173,29 +173,23 @@ def writeArmature(armature, file):
     
         # write parent index
         if bone.parent:
-            offset = bone.head_local - bone.parent.head_local
+            #offset = bone.head_local - bone.parent.head_local
             fw(struct.pack('=H', bone_indices[bone.parent]))
         else:
-            offset = bone.head_local
+            #offset = bone.head_local
             fw(struct.pack('=H', 0xffff))
         
         # write bone coordinates
-        fw(struct.pack('=fff', offset[0], offset[1], offset[2]))
+        #fw(struct.pack('=3f', offset[0], offset[1], offset[2]))
+        pos = bone.matrix_local.to_translation();
+        fw(struct.pack('=3f', pos[0], pos[1], pos[2]))
+        
 
         # write bone roll
-        print("Roll: ", getRoll(bone))
-        fw(struct.pack('=f', getRoll(bone)))
-        
-        
-def getRoll(bone):
-    mat = bone.matrix_local.to_3x3()
-    quat = mat.to_quaternion()
-    if abs(quat.w) < 1e-4:
-        roll = math.pi
-    else:
-        roll = 2*math.atan2(quat.y, quat.w)
-    return roll
+        roll = bone.matrix_local.to_3x3().to_quaternion();
+        fw(struct.pack('=4f', roll[1], roll[2], roll[3], roll[0]))
 
+        
 
 ########### WRITE ACTION ######################################################
 
