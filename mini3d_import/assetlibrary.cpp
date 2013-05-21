@@ -5,7 +5,7 @@
 
 
 #include "assetlibrary.hpp"
-#include "fileparsers/mini3d/mini3dimporter.hpp"
+#include "importers/mini3d/mini3dimporter.hpp"
 
 #include <cstring>
 #include <cstdio>

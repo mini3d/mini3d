@@ -123,7 +123,7 @@ struct Texture : public NamedResource
     Texture();
     ~Texture();
 
-	const char* filename;
+    const char* filename;
 };
 
 struct Joint : public NamedResource
