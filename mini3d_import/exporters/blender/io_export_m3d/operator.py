@@ -1,3 +1,8 @@
+#!BPY
+
+# Copyright (c) <2013> Daniel Peterson
+# License: MIT Software License <www.mini3d.org/license>
+
 
 import bpy
 import sys

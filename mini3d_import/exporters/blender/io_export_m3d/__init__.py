@@ -1,6 +1,8 @@
+#!BPY
 
 # Copyright (c) <2013> Daniel Peterson
 # License: MIT Software License <www.mini3d.org/license>
+
 
 bl_info = {
     "name": "Export Mini3d file (.m3d)",

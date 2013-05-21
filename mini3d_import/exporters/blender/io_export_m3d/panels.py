@@ -10,7 +10,12 @@ vertexAttributes = [("POSITION", "Position", "" , "MAN_TRANS", 0 ),
                       ("TEXTURE", "Texture Coordinates", "", "GROUP_UVS", 4),
                       ("GROUPS", "Vertex Groups", "", "GROUP_VERTEX", 5),                                            
                       ("COLOR", "Vertex Color", "", "GROUP_VCOL", 6)]
-                      
+#!BPY
+
+# Copyright (c) <2013> Daniel Peterson
+# License: MIT Software License <www.mini3d.org/license>
+
+
 vertexAttributeDict = {i[0]: [i[1], i[3]] for i in vertexAttributes}
 
 class AttributeProperty(bpy.types.PropertyGroup):
@@ -166,7 +171,7 @@ class DoNotiongOperator(bpy.types.Operator):
     bl_label = "Rename Vertex Attribute Group"
 
     def invoke(self, context, event):
-        return{"FINISHED"}    
+        return{"FINISHED"}
         
 class MeshAttributeGroupSet(bpy.types.Operator):
     bl_idname = "mesh.attribute_group_set"

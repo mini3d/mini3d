@@ -1,5 +1,9 @@
 #!BPY
 
+# Copyright (c) <2013> Daniel Peterson
+# License: MIT Software License <www.mini3d.org/license>
+
+
 """
 Name: 'Mini3d file Exporter'
 Blender: 263a
@@ -16,8 +20,6 @@ import mathutils
 from operator import itemgetter
 
 
-# todo: break the write count out of writenameindexmap
-
 ########### WRITE MESH ########################################################
 
 def writeMesh(mesh, file):
@@ -31,18 +33,19 @@ def writeMesh(mesh, file):
     
     #find the vertex attributes for this mesh
     attributes = None
-    try:
-        group = bpy.data.scenes["Mini3d Settings"].attribute_groups[mesh.attribute_group]
+
+    group = bpy.data.scenes["Mini3d Settings"].attribute_groups.get(mesh.attribute_group)
+
+    if group:
         attributes = [i.type for i in group.attributes]
-    except:
-        print("No attributes found for mesh ", mesh.name, ". Using defaults")
-        print("Settings: ", bpy.data.scenes["Mini3d Settings"])
+    else:
+        print("No attributes group found for mesh ", mesh.name, ". Using defaults")
+        print("Settings: ", bpy.data.scenes.get("Mini3d Settings"))
         print("Group Name: ", mesh.attribute_group)
-        print("Group: ", bpy.data.scenes["Mini3d Settings"].attribute_groups[mesh.attribute_group])
-        pass
-    
-    if attributes is None:
+
+    if attributes is None or len(attributes) == 0:
         attributes = ['POSITION', 'NORMAL', 'TEXTURE']
+        print("No attributes found for mesh ", mesh.name, ". Using defaults")
     
     # gather texture coordinates
     texCo = [[0,0] for vert in mesh.vertices];
@@ -173,14 +176,11 @@ def writeArmature(armature, file):
     
         # write parent index
         if bone.parent:
-            #offset = bone.head_local - bone.parent.head_local
             fw(struct.pack('=H', bone_indices[bone.parent]))
         else:
-            #offset = bone.head_local
             fw(struct.pack('=H', 0xffff))
         
         # write bone coordinates
-        #fw(struct.pack('=3f', offset[0], offset[1], offset[2]))
         pos = bone.matrix_local.to_translation();
         fw(struct.pack('=3f', pos[0], pos[1], pos[2]))
         
