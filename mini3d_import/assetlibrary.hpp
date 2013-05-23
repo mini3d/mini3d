@@ -7,40 +7,78 @@
 #ifndef MINI3D_ASSETIMPORTER_H
 #define MINI3D_ASSETIMPORTER_H
 
-#include <stdint.h>
 #include <cstring>
-#include <cstdlib>
+
+void mini3d_assert(bool expression, const char* text, ...);
 
 // Vertex Data Structure
 namespace mini3d {
 namespace import {
 
-
 const unsigned int NO_TEXTURE = 0xffff;
 const unsigned int NO_BONE_PARENT = 0xffff;
 
-struct NamedResource { const char* name; NamedResource() { name = 0; } virtual ~NamedResource() { delete[] name; } };
+////////// HELPER CLASSES ///////////////////////////////////////////////////////
 
-inline static int stringComparer(const void* a, const void* b) { return strcmp((const char*)a, ((NamedResource*)b)->name); }
+template <typename T> 
+struct AutoArray
+{
+    AutoArray() : array(0), count(0)                                    {}
+    AutoArray(T* array, unsigned int size) : array(array), count(size)  {}
+    ~AutoArray()                                                        { delete[] array; }
+
+    T* array; 
+    unsigned int count; 
+};
+
+struct AutoString : AutoArray<char>
+{
+    // No need to use include cstring for strlen() and strcmp() alone...
+    AutoString()                                                        {}
+    AutoString(const char* str)                                         { array = strdup(str); count = strlen(str); }
+    char* operator = (char* rhs)                                        { array = rhs; count = strlen(rhs); return rhs; }
+    bool operator == (const char* rhs)                                  { return !strcmp(array, rhs); }
+    bool operator == (AutoString &rhs)                                  { return !strcmp(array, rhs.array); }
+};
+
+template <typename T, bool AUTODELETE = false> 
+struct AutoObjectArray : AutoArray<T>
+{
+    ~AutoObjectArray()                                                  { if (AUTODELETE) for (unsigned int i = 0; i < count; ++i) (array + i)->~T(); }
+};
+
+struct NamedResource { AutoString name; unsigned int index; };
+
+template <typename T, bool AUTODELETE = false> 
+struct AssetArray : AutoArray<T>
+{ 
+    AssetArray()                                                        {}
+    AssetArray(T* array, unsigned int size) : AutoArray(array, size)    {}
+    ~AssetArray()                                                       { if (AUTODELETE) for (unsigned int i = 0; i < count; ++i) (array + i)->~T(); }
+
+    T* Find(const char* name)                                           { return (T*) bsearch(name, array, count, sizeof(T), &cmp); }
+    static int cmp(const void* a, const void* b)                        { return strcmp((const char*)a, ((NamedResource*)b)->name.array); }
+};
+
+
+////////// ASSET CLASSES ////////////////////////////////////////////////////////
+
+struct Mesh;
+struct Material;
+struct Texture;
 
 struct Object: public NamedResource
 {
-    Object();
-    ~Object();
-
   	float position[4];
 	float rotation[4];
 	float scale[4];
 
-	unsigned int meshIndex;
-    unsigned int materialIndex;
+	Mesh* mesh;
+    Material* material;
 };
 
 struct Camera : public NamedResource
 {
-    Camera();
-    ~Camera();
-
 	float position[4];
 	float rotation[4];
 
@@ -52,12 +90,7 @@ struct Camera : public NamedResource
 
 struct Light : public NamedResource
 {
-	enum Type { DIRECTIONAL, POINT, SPOT };
-
-    Light();
-    ~Light();
-
-	Type type;
+	enum Type { DIRECTIONAL, POINT, SPOT } type;
 
 	float position[4];
 	float rotation[4];
@@ -75,130 +108,70 @@ struct Light : public NamedResource
 	float aspectRatio;
 };
 
+
 struct Scene : public NamedResource
 {
-    Scene();
-    ~Scene();
-
-    Camera* GetCameraByName(const char* name)       { return (Camera*) bsearch(name, cameras, cameraCount, sizeof(Camera), &stringComparer); }
-    Light* GetLightByName(const char* name)         { return (Light*) bsearch(name, lights, lightCount, sizeof(Light), &stringComparer); }
-    Object* GetObjectByName(const char* name)       { return (Object*) bsearch(name, objects, objectCount, sizeof(Object), &stringComparer); }
-
-	unsigned int cameraCount;
-	Camera* cameras;
-
-	unsigned int lightCount;
-	Light* lights;
-
-	unsigned int objectCount;
-	Object* objects;
+    AssetArray<Camera, true> cameras;
+    AssetArray<Light, true> lights;
+    AssetArray<Object, true> objects;
 };
 
 struct Mesh : public NamedResource
 {
-    Mesh();
-    ~Mesh();
-
-	unsigned int vertexCount;
     unsigned int vertexSizeInBytes;
-    const char* vertexData;
-	
-	unsigned int indexCount;
-	unsigned int* indices;
+    AutoArray<char> vertexData;
+
+    unsigned int indexSizeInBytes;
+	AutoArray<char> indexData;
 };
 
 struct Material : public NamedResource
 {
-    Material();
-    ~Material();
-
-	int shaderIndex;
-	
-	unsigned int textureCount;
-	unsigned int* textureIndices;
+    AssetArray<Texture*> textures;
 };
 
 struct Texture : public NamedResource
 {
-    Texture();
-    ~Texture();
-
-    const char* filename;
+    AutoString filename;
 };
 
 struct Joint : public NamedResource
 {
-    const char* name;
-    unsigned int parentIndex;
+    Joint* parent;
 	float offset[4];
     float roll[4];
 };
 
 struct Armature : public NamedResource
 {
-    Armature();
-    ~Armature();
-
-	unsigned int jointCount;
-	Joint* joints;
+    AssetArray<Joint, true> joints;
 };
 
-// Nodes are sorted in time order
+struct Channel
+{
+    AutoString boneName;
+    enum Type { POSITION, ROTATION, SCALE } type;
+    AutoArray<char> animationData;
+};
+
 struct Action : public NamedResource
 {
-    struct Channel
-    {
-        Channel();
-        ~Channel();
-
-        const char* boneName;
-        const char* targetName;
-        unsigned int subindexCount;
-        unsigned int keyframeCount;
-        float* animationData;
-    };
-    
-
-    Action();
-    ~Action();
-    
     float length;
-    unsigned int channelCount;
-    Channel* channels;
+    AutoObjectArray<Channel, true> channels;
 };
 
 struct AssetLibrary
 {
     static AssetLibrary* LoadFromFile(const char* filename);
-    AssetLibrary();
-    ~AssetLibrary();
     
-    Scene* GetSceneByName(const char* name)         { return (Scene*) bsearch(name, scenes, sceneCount, sizeof(Scene), &stringComparer); }
-    Mesh* GetMeshByName(const char* name)           { return (Mesh*) bsearch(name, meshes, meshCount, sizeof(Mesh), &stringComparer); }
-    Material* GetMaterialByName(const char* name)   { return (Material*) bsearch(name, materials, materialCount, sizeof(Material), &stringComparer); }
-    Armature* GetArmatureByName(const char* name)   { return (Armature*) bsearch(name, armatures, armatureCount, sizeof(Armature), stringComparer); }
-    Texture* GetTextureByName(const char* name)     { return (Texture*) bsearch(name, textures, textureCount, sizeof(Texture), &stringComparer); }
-    Action* GetActionByName(const char* name)       { return (Action*) bsearch(name, actions, actionCount, sizeof(Action), &stringComparer); }
-
-    unsigned int sceneCount;
-    Scene* scenes;
-
-	unsigned int meshCount;
-	Mesh* meshes;
-
-	unsigned int materialCount;
-	Material* materials;
-
-	unsigned int armatureCount;
-    Armature* armatures;
-
-	unsigned int textureCount;
-    Texture* textures;
-
-	unsigned int actionCount;
-    Action* actions;
+    // true means autodelete array contents in array destructor
+    AssetArray<Scene, true> scenes;
+    AssetArray<Mesh, true> meshes;
+    AssetArray<Material, true> materials;
+    AssetArray<Armature, true> armatures;
+    AssetArray<Texture, true> textures;
+    AssetArray<Action, true> actions;
 };
-
 
 } // namespace import
 } // namespace mini3d

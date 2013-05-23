@@ -37,10 +37,10 @@ struct IVertexBuffer
     
 	struct VertexAttribute { const char* name; DataUsage usage; unsigned int usageIndex; DataType type; unsigned int count; };
     */
-    static IVertexBuffer* New(IGraphicsService* pGraphics, const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes); //, const VertexAttribute* pAttributes, unsigned int attributeCount, StreamMode streamMode = STREAM_MODE_VERTEX_DATA);
+    static IVertexBuffer* New(IGraphicsService* pGraphics, const char* pVertices, unsigned int sizeInBytes, unsigned int vertexSizeInBytes); //, const VertexAttribute* pAttributes, unsigned int attributeCount, StreamMode streamMode = STREAM_MODE_VERTEX_DATA);
     virtual ~IVertexBuffer() {};
 
-	virtual void SetVertices(const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes) = 0; //, const VertexAttribute* pAttributes, unsigned int attributeCount, StreamMode streamMode = STREAM_MODE_VERTEX_DATA) = 0;
+	virtual void SetVertices(const char* pVertices, unsigned int sizeInBytes, unsigned int vertexSizeInBytes) = 0; //, const VertexAttribute* pAttributes, unsigned int attributeCount, StreamMode streamMode = STREAM_MODE_VERTEX_DATA) = 0;
 
     /*
     virtual unsigned int GetVertexAttributeCount() const = 0;

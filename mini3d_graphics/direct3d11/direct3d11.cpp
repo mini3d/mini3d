@@ -47,17 +47,15 @@ public:
     ID3D11Buffer* GetBuffer() const         { return m_pBuffer; }
     ~IndexBuffer_D3D11()                    { Unload(); }
 
-    IndexBuffer_D3D11(GraphicsService_D3D11* pGraphicsService, const void* pIndices, unsigned int count, DataType dataType)
+    IndexBuffer_D3D11(GraphicsService_D3D11* pGraphicsService, const char* pIndices, unsigned int sizeInBytes, DataType dataType)
     {
         m_pGraphicsService = pGraphicsService; 
         m_pBuffer = 0;
-        m_dataType = INT_32;
-        m_indexCount = 0;
 
-        SetIndices(pIndices, count, dataType);
+        SetIndices(pIndices, sizeInBytes, dataType);
     }
 
-    void SetIndices(const void* pIndices, unsigned int count, DataType dataType)
+    void SetIndices(const void* pIndices, unsigned int sizeInBytes, DataType dataType)
     {
         mini3d_assert(pIndices != 0, "Setting an Index Buffer with a NULL data pointer!");
 
@@ -69,14 +67,13 @@ public:
 
         // If it does not exist, create a new one
         static const unsigned int BYTES_PER_INDEX[] = { 2, 4 }; // Maps to IIndexBuffer::DataType enum
-        unsigned int sizeInBytes = BYTES_PER_INDEX[dataType] * count;
 
         D3D11_BUFFER_DESC desc = { sizeInBytes, D3D11_USAGE_DEFAULT, D3D11_BIND_INDEX_BUFFER, 0, 0, 0 };
         D3D11_SUBRESOURCE_DATA pData = {pIndices}; // TODO: set pitch?
         mini3d_assert(S_OK == pDevice->CreateBuffer(&desc, &pData, &m_pBuffer), "Failed to create Direct3D 11 index buffer");
     
         m_dataType = dataType;
-        m_indexCount = count;
+        m_indexCount = count / BYTES_PER_INDEX[dataType];
     }
 
     void Unload()
@@ -108,15 +105,15 @@ public:
     ID3D11Buffer* GetBuffer() const                                         { return m_pBuffer; }
     ~VertexBuffer_D3D11(void)                                               { Unload(); }
 
-    VertexBuffer_D3D11(GraphicsService_D3D11* pGraphicsService, const void* pVertices, unsigned int count, unsigned int vertexSizeInBytes)
+    VertexBuffer_D3D11(GraphicsService_D3D11* pGraphicsService, const char* pVertices, unsigned int sizeInBytes, unsigned int vertexSizeInBytes)
     {
         m_pGraphicsService = pGraphicsService; 
         m_pBuffer = 0;
 
-        SetVertices(pVertices, count, vertexSizeInBytes);
+        SetVertices(pVertices, sizeInBytes, vertexSizeInBytes);
     }
 
-    void SetVertices(const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes)
+    void SetVertices(const char* pVertices, unsigned int sizeInBytes, unsigned int vertexSizeInBytes)
     {
         mini3d_assert(pVertices != 0, "Setting a Vertex Buffer with a NULL data pointer!");
 
@@ -126,13 +123,11 @@ public:
             Unload();
         
         // If it does not exist, create a new one
-        unsigned int sizeInBytes = vertexCount * vertexSizeInBytes;
-
         D3D11_BUFFER_DESC desc = { sizeInBytes, D3D11_USAGE_DEFAULT, D3D11_BIND_VERTEX_BUFFER, 0, 0, 0 };
         D3D11_SUBRESOURCE_DATA pData = {pVertices}; // TODO: set pitch?
         mini3d_assert(S_OK == pDevice->CreateBuffer(&desc, &pData, &m_pBuffer), "Failed to create Direct3D 11 vertex buffer");
 
-        m_vertexCount = vertexCount;
+        m_vertexCount = sizeInBytes / vertexSizeInBytes;
         m_vertexSizeInBytes = vertexSizeInBytes;
     }
 
@@ -1297,8 +1292,8 @@ private:
 
 IGraphicsService* IGraphicsService::New() { return new GraphicsService_D3D11(); }
 
-IIndexBuffer* IIndexBuffer::New(IGraphicsService* pGraphics, const void* pIndices, unsigned int count, DataType dataType) { return new GraphicsService_D3D11::IndexBuffer_D3D11((GraphicsService_D3D11*)pGraphics, pIndices, count, dataType); }
-IVertexBuffer* IVertexBuffer::New(IGraphicsService* pGraphics, const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes) { return new GraphicsService_D3D11::VertexBuffer_D3D11((GraphicsService_D3D11*)pGraphics, pVertices, vertexCount, vertexSizeInBytes); }
+IIndexBuffer* IIndexBuffer::New(IGraphicsService* pGraphics, const char* pIndices, unsigned int sizeInBytes, DataType dataType) { return new GraphicsService_D3D11::IndexBuffer_D3D11((GraphicsService_D3D11*)pGraphics, pIndices, sizeInBytes, dataType); }
+IVertexBuffer* IVertexBuffer::New(IGraphicsService* pGraphics, const char* pVertices, unsigned int sizeInBytes, unsigned int vertexSizeInBytes) { return new GraphicsService_D3D11::VertexBuffer_D3D11((GraphicsService_D3D11*)pGraphics, pVertices, sizeInBytes, vertexSizeInBytes); }
 IPixelShader* IPixelShader::New(IGraphicsService* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes, bool precompiled) { return new GraphicsService_D3D11::PixelShader_D3D11((GraphicsService_D3D11*)pGraphics, pShaderBytes, sizeInBytes, precompiled); }
 IVertexShader* IVertexShader::New(IGraphicsService* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes, bool precompiled) { return new GraphicsService_D3D11::VertexShader_D3D11((GraphicsService_D3D11*)pGraphics, pShaderBytes, sizeInBytes, precompiled); }
 IShaderProgram* IShaderProgram::New(IGraphicsService* pGraphics, IVertexShader* pVertexShader, IPixelShader* pPixelShader) { return new GraphicsService_D3D11::ShaderProgram_D3D11((GraphicsService_D3D11*)pGraphics, pVertexShader, pPixelShader); }

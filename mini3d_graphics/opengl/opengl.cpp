@@ -115,18 +115,16 @@ struct IndexBuffer_OpenGL : IIndexBuffer
     GLuint GetGLIndexBuffer() const                 { return m_glIndexBuffer; }
     ~IndexBuffer_OpenGL()                           { glDeleteBuffers(1, &m_glIndexBuffer); if (m_pGraphicsService->GetIndexBuffer() == this) m_pGraphicsService->SetIndexBuffer(0); }
 
-    IndexBuffer_OpenGL(GraphicsService_OpenGL* pGraphics, const void* pIndices, unsigned int count, DataType dataType) : m_pGraphicsService(pGraphics), m_bufferSizeInBytes(0)
+    IndexBuffer_OpenGL(GraphicsService_OpenGL* pGraphics, const char* pIndices, unsigned int sizeInBytes, DataType dataType) : m_pGraphicsService(pGraphics), m_bufferSizeInBytes(0)
     {
         glGenBuffers(1, &m_glIndexBuffer);
-        SetIndices(pIndices, count, dataType);
+        SetIndices(pIndices, sizeInBytes, dataType);
     }
 
-    void SetIndices(const void* pIndices, unsigned int count, DataType dataType)
+    void SetIndices(const char* pIndices, unsigned int sizeInBytes, DataType dataType)
     {
         if (m_pGraphicsService->GetIndexBuffer() == this)
             m_pGraphicsService->SetIndexBuffer(0);
-
-        unsigned int sizeInBytes = count * mini3d_IndexBuffer_OpenGL_BytesPerIndex[dataType];
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_glIndexBuffer);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeInBytes, pIndices, GL_STATIC_DRAW);
@@ -134,7 +132,7 @@ struct IndexBuffer_OpenGL : IIndexBuffer
 
         m_bufferSizeInBytes = sizeInBytes;
         m_dataType = dataType;
-        m_indexCount = count;
+        m_indexCount = sizeInBytes / mini3d_IndexBuffer_OpenGL_BytesPerIndex[dataType];
     }
 
 private:
@@ -155,26 +153,24 @@ struct VertexBuffer_OpenGL : IVertexBuffer
    GLuint GetGLVertexBuffer()                                       { return m_glVertexBuffer; }
     ~VertexBuffer_OpenGL()                                          { glDeleteBuffers(1, &m_glVertexBuffer); Unbind(); }
 
-    VertexBuffer_OpenGL(GraphicsService_OpenGL* pGraphics, const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes) :
+    VertexBuffer_OpenGL(GraphicsService_OpenGL* pGraphics, const char* pVertices, unsigned int sizeInBytes, unsigned int vertexSizeInBytes) :
         m_pGraphicsService(pGraphics), m_vertexCount(0), m_vertexSizeInBytes(vertexSizeInBytes)
     {
         glGenBuffers(1, &m_glVertexBuffer);
-        SetVertices(pVertices, vertexCount, vertexSizeInBytes);
+        SetVertices(pVertices, sizeInBytes, vertexSizeInBytes);
     }
 
-    void SetVertices(const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes)
+    void SetVertices(const char* pVertices, unsigned int sizeInBytes, unsigned int vertexSizeInBytes)
     {
 
         Unbind();
-
-        unsigned int sizeInBytes = vertexCount * vertexSizeInBytes;
 
         glBindBuffer(GL_ARRAY_BUFFER, m_glVertexBuffer);
         glBufferData(GL_ARRAY_BUFFER, sizeInBytes, pVertices, GL_STATIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         
         m_vertexSizeInBytes = vertexSizeInBytes;
-        m_vertexCount = vertexCount;
+        m_vertexCount = sizeInBytes / vertexSizeInBytes;;
     }
 
     void Unbind()
@@ -1137,18 +1133,20 @@ private:
         if (m_pCurrentConstantBuffer != 0)
             m_pCurrentConstantBuffer->ApplyUniforms();
 
+        // Get the data type for the indices
+        const GLenum FORMAT[] = { GL_UNSIGNED_SHORT, GL_UNSIGNED_INT }; // Maps to IIndexBuffer::DataType enum
+
         // Draw the scene
         if (m_IsUsingInstancedAttributes) // && m_pPlatform->VERSION_3_3()) TODO: Move somewhere other than platform
         {
             // Draw using instancing
-            glDrawElementsInstanced(GL_TRIANGLES, m_pCurrentIndexBuffer->GetIndexCount(), GL_UNSIGNED_INT, 0, m_InstanceCount);
+            glDrawElementsInstanced(GL_TRIANGLES, m_pCurrentIndexBuffer->GetIndexCount(), FORMAT[m_pCurrentIndexBuffer->GetDataType()], 0, m_InstanceCount);
         }
         else
         {
             // TODO: glDrawRangeElements is faster than glDrawElements according to: http://www.spec.org/gwpg/gpc.static/vbo_whitepaper.html
-            glDrawElements(GL_TRIANGLES, m_pCurrentIndexBuffer->GetIndexCount(), GL_UNSIGNED_INT, 0);
+            glDrawElements(GL_TRIANGLES, m_pCurrentIndexBuffer->GetIndexCount(), FORMAT[m_pCurrentIndexBuffer->GetDataType()], 0);
         }
-
     }
 
     // Clear
@@ -1197,8 +1195,8 @@ private:
 
 IGraphicsService* IGraphicsService::New() { return new GraphicsService_OpenGL(); }
 
-IIndexBuffer* IIndexBuffer::New(IGraphicsService* pGraphics, const void* pIndices, unsigned int count, DataType dataType) { return new GraphicsService_OpenGL::IndexBuffer_OpenGL((GraphicsService_OpenGL*)pGraphics, pIndices, count, dataType); }
-IVertexBuffer* IVertexBuffer::New(IGraphicsService* pGraphics, const void* pVertices, unsigned int vertexCount, unsigned int vertexSizeInBytes) { return new GraphicsService_OpenGL::VertexBuffer_OpenGL((GraphicsService_OpenGL*)pGraphics, pVertices, vertexCount, vertexSizeInBytes); }
+IIndexBuffer* IIndexBuffer::New(IGraphicsService* pGraphics, const char* pIndices, unsigned int sizeInBytes, DataType dataType) { return new GraphicsService_OpenGL::IndexBuffer_OpenGL((GraphicsService_OpenGL*)pGraphics, pIndices, sizeInBytes, dataType); }
+IVertexBuffer* IVertexBuffer::New(IGraphicsService* pGraphics, const char* pVertices, unsigned int sizeInBytes, unsigned int vertexSizeInBytes) { return new GraphicsService_OpenGL::VertexBuffer_OpenGL((GraphicsService_OpenGL*)pGraphics, pVertices, sizeInBytes, vertexSizeInBytes); }
 IPixelShader* IPixelShader::New(IGraphicsService* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes, bool precompiled) { return new GraphicsService_OpenGL::PixelShader_OpenGL((GraphicsService_OpenGL*)pGraphics, pShaderBytes, sizeInBytes); }
 IVertexShader* IVertexShader::New(IGraphicsService* pGraphics, const char* pShaderBytes, unsigned int sizeInBytes, bool precompiled) { return new GraphicsService_OpenGL::VertexShader_OpenGL((GraphicsService_OpenGL*)pGraphics, pShaderBytes, sizeInBytes); }
 IShaderProgram* IShaderProgram::New(IGraphicsService* pGraphics, IVertexShader* pVertexShader, IPixelShader* pPixelShader) { return new GraphicsService_OpenGL::ShaderProgram_OpenGL((GraphicsService_OpenGL*)pGraphics, pVertexShader, pPixelShader); }
