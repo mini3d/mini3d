@@ -22,7 +22,7 @@ AssetLibrary* AssetLibrary::LoadFromFile(const char* filename)
     mini3d_assert(pos != 0, "Faled to identify file ending for file: %s", filename);
 
     // Convert file name ending to upper case
-    AutoString ending(pos);
+    AutoString ending(strdup(pos));
     for(unsigned int i = 0; i < ending.count; ++i) 
         ending.array[i] = toupper(ending.array[i]);
 
