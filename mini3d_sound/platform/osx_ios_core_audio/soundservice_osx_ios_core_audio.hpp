@@ -8,9 +8,9 @@
 #ifndef MINI3D_SOUND_OSX_IOS_CORE_AUDIO_H
 #define MINI3D_SOUND_OSX_IOS_CORE_AUDIO_H
 
-#include "../../sound.hpp" // for Mutex and Lock
 #include "../isoundservice.hpp"
 #include <AudioToolbox/AudioQueue.h>
+#include <thread>
 
 namespace mini3d {
 namespace sound { 
@@ -33,7 +33,7 @@ public:
 
 public: // These are manipulated from the AQBufferCallback function
 	unsigned int m_freeBuffers;
-    Mutex m_mutex;
+    std::mutex m_mutex;
 
 private:
 	unsigned int GetFreeBufferCount();

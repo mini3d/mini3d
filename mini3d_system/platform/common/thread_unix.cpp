@@ -31,7 +31,7 @@ IMutex* IMutex::New() { return new Mutex(); }
 
 ///////// THREAD ///////////////////////////////////////////////////////////////
 
-void* StartThreadProc(void* runnable) { ((IRunnable*)runnable)->Run(); }
+void* StartThreadProc(void* runnable) { ((IRunnable*)runnable)->Run(); return 0; }
 
 struct Thread : IThread
 {

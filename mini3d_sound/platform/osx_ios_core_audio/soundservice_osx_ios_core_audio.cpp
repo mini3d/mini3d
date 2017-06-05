@@ -19,7 +19,7 @@ const unsigned int OSX_IOS_CORE_AUDIO_BUFFER_SIZE_IN_FRAMES = 2048;
 void AQBufferCallback(void* pVoid, AudioQueueRef inAQ, AudioQueueBufferRef inCompleteAQBuffer)
 {
 	SoundService_osx_ios_core_audio* pSoundService = (SoundService_osx_ios_core_audio*)pVoid;
-	Lock guard(&pSoundService->m_mutex);
+    std::lock_guard<std::mutex> lock(pSoundService->m_mutex);
     ++pSoundService->m_freeBuffers;
 }
 
@@ -80,7 +80,7 @@ BufferDesc SoundService_osx_ios_core_audio::GetDescription() const { return m_de
 
 unsigned int SoundService_osx_ios_core_audio::GetFreeBufferCount()
 {
-    Lock guard(&m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     return m_freeBuffers;
 }
 
@@ -99,7 +99,7 @@ void SoundService_osx_ios_core_audio::AddPeriodBufferToQueue(short* pBuffer)
 
     m_nextBufferIndex = (m_nextBufferIndex + 1) % OSX_IOS_CORE_AUDIO_BUFFER_COUNT;
 
-    Lock guard(&m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     --m_freeBuffers;
 }
 

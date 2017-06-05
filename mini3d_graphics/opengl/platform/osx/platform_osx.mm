@@ -37,7 +37,7 @@ void mini3d_assert(bool expression, const char* text, ...);
     
 ///////// PLATFORM ////////////////////////////////////////////////////////////
 
-const NSOpenGLPixelFormatAttribute attributes[] = { NSOpenGLPFADoubleBuffer, NSOpenGLPFADepthSize, 24, NSOpenGLPFAColorSize, 24, nil };
+const NSOpenGLPixelFormatAttribute attributes[] = { NSOpenGLPFADoubleBuffer, NSOpenGLPFADepthSize, 24, NSOpenGLPFAColorSize, 24, 0 };
     
 class Platform_osx : public IPlatform
 {

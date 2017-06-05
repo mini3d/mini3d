@@ -12,28 +12,21 @@
 
 #include "platform/isoundservice.hpp"
 
+#include <atomic>
+#include <memory>
+#include <algorithm>
+#include <vector>
+#include <thread>
+
 void mini3d_assert(bool expression, const char* text, ...);
 
 struct stb_vorbis;
-
-typedef unsigned int uint;
-typedef unsigned short ushort;
 
 namespace mini3d {
 namespace sound {
 
 
-///////// THREADING ///////////////////////////////////////////////////////////
-
-struct IFunctor { virtual ~IFunctor() {}; };
-template <class T> struct Functor : IFunctor { typedef void (T::*F)(); Functor(T* o, F f) : o(o), f(f) {} ~Functor() { (o->*f)(); } private: T* o; F f; };
-
-struct Mutex { Mutex(); ~Mutex(); void Lock(); void Unlock(); private: void* m_hMutex; };
-struct Lock { Lock(Mutex* m) { x=m; x->Lock(); } ~Lock() { x->Unlock(); } private: Mutex* x; };
-struct Thread { Thread() : t(0) {} void Run(IFunctor* pFunc); void Join(); static void Sleep (unsigned int ms); void* t; };
-
-
-///////// MINI3D SOUND ////////////////////////////////////////////////////////
+///////// MINI3D SOUND /////////////////////////////////////////////////////////
 
 const uint SAMPLE_RATE_44100_HZ = 44100;
 const uint SAMPLE_RATE_22050_HZ = 22050;
@@ -53,242 +46,215 @@ const uint STREAM_BUFFER_SIZE_MODULO = STREAM_BUFFER_SIZE_IN_FRAMES - 1; // Allo
 const uint MAX_INPUT_CHANNELS = 2; // Max number of channels in ogg-files used for input
 const uint MAX_OUTPUT_CHANNELS = 8; // Max number of surround-channels in output.
 
-#define LOCKED Lock guard(&m_mutex)
 
-///////// FORWARD DECLARATIONS ////////////////////////////////////////////////
+///////// WAV //////////////////////////////////////////////////////////////////
 
-class SoundBuffer;
-class StreamBuffer;
-class SoundSource;
-class SoundFilter;
-class SoundOutput;
-
-
-///////// SHARED OBJECT ///////////////////////////////////////////////////////
-
-class SharedObject
-{
-public:
-    SharedObject() : m_allocCount(1)   {}
-    virtual ~SharedObject() {}
-
-    virtual void Alloc()                            { LOCKED; ++m_allocCount; }
-    virtual void Release()                          { m_mutex.Lock(); if (--m_allocCount) m_mutex.Unlock(); else delete this; }
-
-    virtual uint internal_get_alloc_count()         { LOCKED; return m_allocCount; }
-
-protected:
-    mutable Mutex m_mutex;
-    uint m_allocCount;
-};
-
-
-///////// SOUND BUFFER ////////////////////////////////////////////////////////
-
-class SoundBuffer : public SharedObject
-{
-public:
-    SoundBuffer() : m_pBuffer(0)                    {}
-    SoundBuffer(const char* pFilename);
-    SoundBuffer(const float* pSoundData, uint lengthInFrames, uint channelCount, uint sampleRate);
+class Buffer;
     
-    BufferDesc GetDescription() const               { return m_desc; }
+class Wav {
+    public:
+        static Buffer *load(const char *fileName);
+};
 
-    // For use by Sound Source only!
-    // returns acutual readable frames
-    virtual double _internal_get_frame_pointer(float** pBuffer, const double positionInFrames, double requestedFrames);
+    
+///////// BUFFER ///////////////////////////////////////////////////////////////
 
-protected:
-    // Reference Counted, disposed using Release();
-    virtual ~SoundBuffer()                          { delete[] m_pBuffer; }
-
-    float* m_pBuffer;
-    BufferDesc m_desc;
+class Buffer {
+    
+public:
+    Buffer(size_t channelCount, size_t length);
+    
+    size_t getChannelCount();
+    void setChannelCount(size_t channelCount);
+    
+    size_t getLength();
+    void setLength(size_t length);
+    
+    void clear();
+    
+    float* getDataBuffer(size_t channel);
+    void addSample(size_t channel, float value);
+    
+    std::vector<std::vector<float>> mData;
 };
 
 
-///////// STREAM BUFFER ///////////////////////////////////////////////////
+///////// SOURCE ///////////////////////////////////////////////////////////////
 
-// Only use this with a single SoundSource at a time!
-class StreamBuffer : public SoundBuffer
-{
+class Source {
+    
 public:
-    StreamBuffer();
-    StreamBuffer(const char* pFilename);
-    StreamBuffer(const char* pSoundData, uint dataSizeInBytes);
+    enum State { STOPPED, PLAYING, PAUSED };
+    
+    static constexpr float AUDIBLE_THRESHOLD = 0.001f;
+    
+    // Playback Control
+    void play() { state = PLAYING; }
+    void pause() { state = PAUSED; }
+    void stop() { state = STOPPED; }
+    
+    State getPlaybackState() { return state; }
+    
+    float getBalance() { return balance; }
+    void setBalance(float value) { balance = std::min(std::max(value, 0.0f), 1.0f); }
+    
+    float getVolume() { return volume; }
+    void setVolume(float value) { volume = value; }
+    
+    size_t getPriority() { return priority; };
+    void setPriority(size_t value) { priority = value; };
+    
+    virtual void addToBuffer(Buffer *buffer) = 0;
+    virtual void advance(size_t count) = 0;
+    
+    static bool isHigherPriority(std::shared_ptr<Source> a, std::shared_ptr<Source> b);
+    
+    // Only from mixer thread
+    
+    bool isPlaying();
+    
+    
+protected:
+    
+    static void mixBuffers(Buffer* srcBuffer, Buffer* dstBuffer, size_t srcOffset, size_t dstOffset, size_t count, float (&inMixMatrix)[2][2], float (&outMixMatrix)[2][2]);
+    static void zeroMixMatrix(float (&mixMatrix)[2][2]);
+    void setMixMatrix(size_t srcChannels, size_t dstChannels);
+    
+    // Shared between threads
+    
+    std::atomic<State> state{State::PLAYING};
+    std::atomic<float> volume{1.0f};
+    std::atomic<float> balance{0.5f};
+    std::atomic<size_t> priority{0};
+    
+    // Only background thread
+    
+    float fadeInOutVolume = 1.0f;
+    float mixMatrix[2][2];
+    float oldMixMatrix[2][2];
+    
+};
 
-    void Release()                                  { LOCKED; if (--m_allocCount == 0) m_shutDown = true; }
 
-    // For use by Sound Source only!
-    double _internal_get_frame_pointer(float** pBuffer, const double positionInFrames, double requestedFrames);
+///////// SOUND ////////////////////////////////////////////////////////////////
 
+class Sound : public Source {
+    
+public:
+    
+    Sound(const char *fileName);
+    Sound(std::shared_ptr<Buffer> buffer);
+    virtual ~Sound();
+    
+    // Buffer mixing
+    
+    void addToBuffer(Buffer *buffer);
+    void advance(size_t count);
+    
+private:
+    
+    size_t offset = 0;
+    std::shared_ptr<Buffer> audioBuffer;
+};
+
+
+///////// MUSIC ////////////////////////////////////////////////////////////////
+
+class Music : public Source {
+public:
+    Music();
+    Music(const char* filename);
+    Music(const char* pSoundData, size_t dataSizeInBytes);
+    virtual ~Music() {};
+    
+    // Buffer mixing
+    void addToBuffer(Buffer *buffer);
+    void advance(size_t count);
+    
 private:
     void Init();
     void DecodeThreadFunction();
-
-private:
-    // Reference Counted, disposed using Release();
-    ~StreamBuffer() {};
-
-    Thread m_decodeThread;
-    stb_vorbis* m_pVorbis;    
-    const char* m_pData;
-    double m_readPosition_f;
-    double m_nextReadPosition_f;
-    uint m_dataLengthInBytes;
-    uint m_writePosition_f;
-    bool m_streamHasEnded;
-    bool m_shutDown;
-};
-
-
-///////// SOUND FILTER ////////////////////////////////////////////////////////
-
-class SoundFilter : public SharedObject
-{
-public:
-    SoundFilter(SoundOutput* pOutput);
-
-    virtual void ApplyFilter() = 0; // Override this in a sub-class to implement the effect
-
-    SoundFilter* GetFilter() const                  { LOCKED; return m_pFilter; }
-    void SetFilter(SoundFilter* pFilter)            { LOCKED; if (m_pFilter) m_pFilter->Release(); m_pFilter = pFilter; if (pFilter) pFilter->Alloc(); }
-
-    // Called by sound output to mix sound sources into this buffer
-    void internal_mix();
-
-    // Called by sound source to get a buffer to mix into
-    float* internal_get_buffer()                    { return m_pBuffer; }
-
-
-protected:
-    // Shared resource, disposed using Release()!
-    ~SoundFilter()                                  { delete m_pBuffer; if (m_pFilter) m_pFilter->Release();} 
-
-    SoundOutput* m_pOutput;
-    float* m_pBuffer;
-    SoundFilter* m_pFilter;
-};
-
-
-///////// SOUND SOURCE ////////////////////////////////////////////////////////
-
-class SoundSource : public SharedObject
-{
-public:
-    enum State                                      { STATE_PLAYING, STATE_PAUSED, STATE_STOPPED };
-
-    SoundSource(SoundOutput* pOutput, SoundBuffer* pBuffer = 0, SoundFilter* pFilter = 0);
-
-    void Play()                                     { LOCKED; if(m_pOutput) m_state_user.state = STATE_PLAYING; }
-    void Pause()                                    { LOCKED; if (m_state_user.state == STATE_PLAYING) m_state_user.state = STATE_PAUSED; }
-    void Stop()                                     { LOCKED; m_state_user.state = STATE_STOPPED; }
-
-    State GetState() const                          { LOCKED; return m_state_user.state; }
-
-    SoundBuffer* GetBuffer() const                  { LOCKED; return m_state_user.pBuffer; }
-    void SetBuffer(SoundBuffer* pBuffer)            { LOCKED; if (m_state_user.pBuffer) m_state_user.pBuffer->Release(); m_state_user.pBuffer = pBuffer; if (pBuffer) pBuffer->Alloc(); }
-
-    SoundFilter* GetFilter() const                  { LOCKED; return m_state_user.pFilter; }
-    void SetFilter(SoundFilter* pFilter)            { LOCKED; if (m_state_user.pFilter) m_state_user.pFilter->Release(); m_state_user.pFilter = pFilter; if (pFilter) pFilter->Alloc(); }
-
-    double GetOffsetInFrames() const                { LOCKED; return m_state_user.offset_f; }
-    virtual void SetOffsetInFrames(double offset)   { LOCKED; m_state_user.offset_f = offset; }
-
-    float GetVolume() const                         { LOCKED; return m_state_user.vol; }
-    void SetVolume(float volume)                    { LOCKED; m_state_user.vol = volume; }
-
-    void Get3dPosition(float pos[3])                { LOCKED; pos[0] = m_state_user.pos[0]; pos[1] = m_state_user.pos[1]; pos[2] = m_state_user.pos[2]; }
-    void Set3dPosition(const float pos[3])          { LOCKED; m_state_user.pos[0] = pos[0]; m_state_user.pos[1] = pos[1]; m_state_user.pos[2] = pos[2]; }
-
-    void Get3dVelocity(float vel[3])                { LOCKED; vel[0] = m_state_user.vel[0]; vel[1] = m_state_user.vel[1]; vel[2] = m_state_user.vel[2]; }
-    void Set3dVelocity(const float vel[3])          { LOCKED; m_state_user.vel[0] = vel[0]; m_state_user.vel[1] = vel[1]; m_state_user.vel[2] = vel[2]; }
-
-    float GetPitch() const                          { LOCKED; return m_state_user.pitch; }
-    void SetPitch(float pitch)                      { LOCKED; m_state_user.pitch = pitch; }
     
-    // For use by Sound Output only!
-    bool internal_get_has_stopped()                 { LOCKED; return ((m_state_user.state == STATE_STOPPED) && (m_state_mix.state == STATE_STOPPED)); }
-    void internal_mix();
-
 private:
-    void Init();
-     
-    // Shared resource, disposed using Release()!
-    ~SoundSource();
-
-    SoundOutput* m_pOutput;
-
-    struct InternalState
-    {
-        SoundBuffer* pBuffer;
-        SoundFilter* pFilter;
-        double offset_f;
-        float pos[3];
-        float vel[3];
-        float pitch;
-        float vol;
-        State state;
-    };
-
-    InternalState m_state_user;
-    InternalState m_state_mix;
-
-    float m_fadeVol;
-};  
-
-
-///////// SOUND OUTPUT ///////////////////////////////////////////////////////
-
-class SoundOutput : SharedObject
-{
-public: 
-    SoundOutput(unsigned int channels, unsigned int sampleRate);
-
-    float GetVolume() const                         { LOCKED; return m_vol; }
-    void SetVolume(float volume)                    { LOCKED; m_vol = volume; }
-
-    BufferDesc GetDescription()                     { return m_pService->GetDescription(); }
-
-    void Release()                                  { LOCKED; if (--m_allocCount == 0) m_shutDown = true; }
-
-    // Called by Sound Source and Sound Filter constructors. No need to call manually!
-    bool internal_add(SoundSource* pSource);
-    bool internal_add(SoundFilter* pFilter);
-
-    // Called by sound source and sound filter to get a buffer to mix into
-    float* internal_get_buffer()                    { return m_pPeriodBuffer; };
-
-private:
-    void MixThreadFunction();
-
-    ~SoundOutput() {}; // Shared resource, disposed using Release()!
-
-    Thread m_mixThread;
-    ISoundService* m_pService;
     
-    float* m_pPeriodBuffer; // only used by the mix thread while mixing
-
-    SoundSource* m_pSources[MAX_TOTAL_SOUND_SOURCES];
-    SoundFilter* m_pFilters[MAX_TOTAL_SOUND_FILTERS];
-
-    uint m_sourceCount;
-    uint m_filterCount;
-
-    float m_vol;
-    float m_oldVol;
-
-    bool m_shutDown;
+    // Mix thread only
+    std::atomic<size_t> m_readPosition_f;
+    
+    // Decode thread only
+    std::thread m_decodeThread;
+    stb_vorbis* m_pVorbis;
+    std::vector<unsigned char> fileData;
+    std::atomic<size_t> m_writePosition_f;
+    
+    // Common static
+    size_t channelCount;
+    size_t sampleRate;
+    size_t lengthInFrames;
+    size_t m_dataLengthInBytes;
+    
+    // Common atomic
+    std::atomic<bool> m_shutDown;
+    std::atomic<bool> m_streamHasEnded;
+    std::atomic<size_t> offset { 0 };
+    
+    // Common mutex
+    std::mutex bufferMutex;
+    Buffer* streamBuffer; //bufferMutex
+    
 };
 
+
+///////// MIXER ////////////////////////////////////////////////////////////////
+
+class Mixer : public Source {
+    
+public:
+    Mixer();
+    ~Mixer();
+    
+    void addSource(std::shared_ptr<Source> source);
+    bool isPlaying();
+    
+    void advance(size_t count);
+    void addToBuffer(Buffer* buffer);
+    
+private:
+    
+    static bool isFinished(const std::shared_ptr<Source> &source);
+    
+    std::vector<std::shared_ptr<Source>> sources;
+    size_t totalVoices;
+};
+
+    
+///////// OUTPUT ///////////////////////////////////////////////////////////////
+
+class BufferDesc;
+class ISoundService;
+    
+class Output {
+    
+public:
+    Output();
+    ~Output();
+    
+    void setSource(std::shared_ptr<Source> source);
+    void shutDown();
+    
+private:
+    std::thread thread;
+    std::shared_ptr<Source> source;
+    std::atomic<bool> isShutDown;
+    
+    static void Mix(Output *output, int id);
+    
+    static void innerMix(Buffer &mixBuffer, BufferDesc* desc, Output *output,
+                         ISoundService *service);
+    
+    static float limit(float value);
+};
 
 }
 }
 
 #endif // _MINI3D_SOUND_H
-
-// Include Platform specific versions
-#include "platform/win32_waveout/soundservice_win32_waveout.hpp"
-#include "platform/android_opensl_es/soundservice_android_opensl_es.hpp"
-#include "platform/linux_alsa/soundservice_linux_alsa.hpp"
-#include "platform/osx_ios_core_audio/soundservice_osx_ios_core_audio.hpp"
